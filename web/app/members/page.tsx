@@ -30,7 +30,6 @@ export interface Member {
   join_date: string | null
   status: 'Active' | 'Inactive'
   notes: string | null
-  licence_expire_date: string | null
   updated_at: string | null
 }
 
@@ -383,10 +382,10 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex">
+    <div className="min-h-screen bg-black flex overflow-x-hidden">
       <Sidebar />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-x-hidden">
         {/* Header */}
         <header className="bg-black border-b border-white/10 px-6 py-4">
           <div className="flex items-center justify-between">

@@ -258,12 +258,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-black">
+    <div className="flex min-h-screen bg-black overflow-x-hidden">
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-x-hidden">
         {/* Header */}
         <header className="bg-white/5 backdrop-blur-md border-b border-white/10 p-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -279,7 +279,7 @@ export default function DashboardPage() {
         {/* Dashboard Content */}
         <main className="flex-1 p-8 overflow-y-auto">
           {/* Top Row Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 overflow-x-hidden">
             {/* Members Card */}
             <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl cursor-pointer relative overflow-hidden" onClick={() => router.push('/members')}>
               {/* Minimalist Logo Background */}
@@ -573,7 +573,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom Row - Calendar and Reminders */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-x-hidden">
             {/* Calendar View */}
             <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl hover:bg-white/10 hover:border-blue-500/30 hover:shadow-blue-500/10 hover:shadow-2xl transition-all duration-300 cursor-pointer group">
               <h2 className="text-lg font-semibold text-white mb-4 group-hover:text-blue-400 transition-colors duration-300">Projects Calendar</h2>

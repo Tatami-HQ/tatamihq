@@ -281,10 +281,10 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex">
+    <div className="min-h-screen bg-black flex overflow-x-hidden">
       <Sidebar />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-x-hidden">
         {/* Header */}
         <header className="bg-black border-b border-white/10 px-6 py-4">
           <div className="flex items-center justify-between">
