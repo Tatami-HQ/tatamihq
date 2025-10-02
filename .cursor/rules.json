@@ -1,0 +1,67 @@
+{
+    "style": {
+      "framework": "Next.js (latest stable)",
+      "language": "TypeScript (strict mode)",
+      "css": "TailwindCSS with custom dark theme",
+      "database": "Supabase (Postgres)",
+      "loading": "optimistic",
+      "state_management": "React Query",
+      "forms": "React Hook Form + Zod",
+      "package_manager": "pnpm"
+    },
+    "constraints": [
+      "Code must use TypeScript in strict mode, never plain JavaScript",
+      "Always design desktop-first but ensure full mobile responsiveness",
+      "Never expose private API keys in frontend code",
+      "Use Supabase client SDK for authentication, database, and storage",
+      "Abstract Supabase queries into reusable functions in /lib",
+      "Keep business logic out of UI components",
+      "Use reusable components for UI (cards, buttons, forms, tables)",
+      "All async actions must include loading, success, and error states",
+      "Always validate and sanitize user input with Zod before saving",
+      "Use Prettier and ESLint for formatting and linting",
+      "Use environment variables for all config, never hardcode values",
+      "File names: components = PascalCase, utils/hooks = camelCase"
+    ],
+    "ui_ux": [
+      "Use a dark, modern dashboard design similar to inspiration screenshot",
+      "Follow Braveheart branding (black + electric blue) but allow easy theming",
+      "Buttons must include hover, focus, disabled, and loading states",
+      "Forms must include client + server-side validation",
+      "Provide descriptive, user-friendly error messages",
+      "Ensure accessibility: semantic HTML, alt text, ARIA roles, keyboard focus",
+      "Maintain consistent spacing and grid layout across all pages"
+    ],
+    "performance": [
+      "Show skeleton loaders or spinners for all async states",
+      "Use optimistic UI updates where possible",
+      "Paginate or infinite scroll lists with more than 20 items",
+      "Cache repeated API calls with React Query",
+      "Lazy load heavy components and routes",
+      "Optimise and compress images, always use Next.js <Image>"
+    ],
+    "security": [
+      "Enable Row Level Security (RLS) for all Supabase tables",
+      "Use Supabase Auth for login and session handling",
+      "Validate and sanitize all inputs",
+      "Never commit .env files to GitHub",
+      "Enforce HTTPS in production",
+      "Use secure cookies for session tokens",
+      "Implement logout that revokes tokens"
+    ],
+    "testing": [
+      "Wrap all API calls in try/catch with descriptive error handling",
+      "Console logs must include context ([Feature:Function])",
+      "Smoke test main flows before deployment (login, add student, attendance, payments)",
+      "Test mobile and desktop views for each major feature",
+      "Unit test utility functions in /lib"
+    ],
+    "scalability": [
+      "Design system must allow other clubs to rebrand easily",
+      "Use modular folder structure: /components, /pages, /lib, /docs",
+      "Plan database schema for long-term growth (indexes, foreign keys)",
+      "Document schema, endpoints, and rules in /docs",
+      "Build code as if multiple developers will collaborate"
+    ]
+  }
+  
