@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import type { User } from '@supabase/supabase-js'
 import Sidebar from '@/components/Sidebar'
 import ProfileDropdown from '@/components/ProfileDropdown'
+import MobileBottomNav from '@/components/MobileBottomNav'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -259,8 +260,10 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-black overflow-x-hidden">
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar - Hidden on mobile */}
+      <div className="hidden sm:block">
+        <Sidebar />
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-x-hidden">
@@ -277,7 +280,7 @@ export default function DashboardPage() {
         </header>
 
         {/* Dashboard Content */}
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-8 overflow-y-auto pb-20 sm:pb-8">
           {/* Top Row Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 overflow-x-hidden">
             {/* Members Card */}
@@ -632,6 +635,9 @@ export default function DashboardPage() {
           </div>
         </main>
       </div>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   )
 }

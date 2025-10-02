@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import type { User } from '@supabase/supabase-js'
 import Sidebar from '@/components/Sidebar'
 import ProfileDropdown from '@/components/ProfileDropdown'
+import MobileBottomNav from '@/components/MobileBottomNav'
 import LeadCard from '@/components/LeadCard'
 import AddLeadModal from '@/components/AddLeadModal'
 import AddMemberModal from '@/components/AddMemberModal'
@@ -282,7 +283,10 @@ export default function LeadsPage() {
 
   return (
     <div className="min-h-screen bg-black flex overflow-x-hidden">
-      <Sidebar />
+      {/* Sidebar - Hidden on mobile */}
+      <div className="hidden sm:block">
+        <Sidebar />
+      </div>
       
       <div className="flex-1 flex flex-col overflow-x-hidden">
         {/* Header */}
@@ -301,7 +305,7 @@ export default function LeadsPage() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 sm:p-6 pb-20 sm:pb-6">
           {/* Error Message */}
           {error && (
             <div className="mb-6 bg-red-900/20 border border-red-500/30 rounded-lg p-4">
@@ -424,6 +428,9 @@ export default function LeadsPage() {
           }}
         />
       )}
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   )
 }
