@@ -30,6 +30,7 @@ export interface Member {
   join_date: string | null
   status: 'Active' | 'Inactive'
   notes: string | null
+  licence_expire_date: string | null
   updated_at: string | null
 }
 

@@ -73,6 +73,20 @@ export default function MembersTable({
     }
   }
 
+  const handleStatusToggle = async (member: Member) => {
+    if (member.status === 'Active') {
+      const confirmed = window.confirm('Are you sure you want to remove this member? They will be hidden from the active members list.')
+      if (!confirmed) return
+    }
+
+    try {
+      const newStatus = member.status === 'Active' ? 'Inactive' : 'Active'
+      await onUpdateMember(member.members_id, { status: newStatus })
+    } catch (error) {
+      console.error('Error updating member status:', error)
+    }
+  }
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -254,9 +268,16 @@ export default function MembersTable({
                       <option value="Inactive" className="bg-gray-800">Inactive</option>
                     </select>
                   ) : (
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusColors[member.status]}`}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStatusToggle(member)
+                      }}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border transition-all duration-200 hover:scale-105 ${statusColors[member.status]} cursor-pointer`}
+                      title={`Click to ${member.status === 'Active' ? 'deactivate' : 'activate'} member`}
+                    >
                       {member.status}
-                    </span>
+                    </button>
                   )}
                 </td>
                 <td className="px-6 py-6 whitespace-nowrap text-right text-sm font-medium">

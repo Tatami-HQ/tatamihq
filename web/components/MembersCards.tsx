@@ -42,9 +42,38 @@ export default function MembersCards({
     })
   }
 
+  const isLicenseExpiringSoon = (expireDate: string | null) => {
+    if (!expireDate) return false
+    const today = new Date()
+    const expiryDate = new Date(expireDate)
+    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    return daysUntilExpiry <= 30 && daysUntilExpiry >= 0 // Expires within 30 days
+  }
+
+  const isLicenseExpired = (expireDate: string | null) => {
+    if (!expireDate) return false
+    const today = new Date()
+    const expiryDate = new Date(expireDate)
+    return expiryDate < today
+  }
+
   const statusColors = {
     Active: 'bg-green-900/20 text-green-400 border-green-500/30',
     Inactive: 'bg-gray-900/20 text-gray-400 border-gray-500/30'
+  }
+
+  const handleStatusToggle = async (member: Member) => {
+    if (member.status === 'Active') {
+      const confirmed = window.confirm('Are you sure you want to remove this member? They will be hidden from the active members list.')
+      if (!confirmed) return
+    }
+
+    try {
+      const newStatus = member.status === 'Active' ? 'Inactive' : 'Active'
+      await onUpdateMember(member.members_id, { status: newStatus })
+    } catch (error) {
+      console.error('Error updating member status:', error)
+    }
   }
 
   if (isLoading) {
@@ -108,9 +137,16 @@ export default function MembersCards({
                   <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors duration-200 truncate">
                     {member.first_name} {member.last_name}
                   </h3>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColors[member.status]} flex-shrink-0`}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleStatusToggle(member)
+                    }}
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-all duration-200 hover:scale-105 ${statusColors[member.status]} flex-shrink-0 cursor-pointer`}
+                    title={`Click to ${member.status === 'Active' ? 'deactivate' : 'activate'} member`}
+                  >
                     {member.status}
-                  </span>
+                  </button>
                 </div>
                 
                 {/* Email */}
@@ -118,69 +154,43 @@ export default function MembersCards({
               </div>
             </div>
 
-            {/* Member Info - Two Column Layout */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* Member Info - Clean Layout */}
+            <div className="space-y-2 mb-4">
               {member.phone && (
-                <div className="flex items-center text-sm text-gray-300">
-                  <svg className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <span className="truncate">{member.phone}</span>
+                <div className="text-sm text-gray-300 truncate">
+                  {member.phone}
                 </div>
               )}
               
-              {member.gender && (
-                <div className="flex items-center text-sm text-gray-300">
-                  <svg className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="truncate">{member.gender}</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between text-sm">
+                {member.date_of_birth && (
+                  <span className="text-gray-400">
+                    Age {calculateAge(member.date_of_birth)}
+                  </span>
+                )}
+                {member.membership_type && (
+                  <span className="text-blue-400 font-medium">
+                    {member.membership_type}
+                  </span>
+                )}
+              </div>
 
-              {member.date_of_birth && (
-                <div className="flex items-center text-sm text-gray-300">
-                  <svg className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              {/* License Expiry Warning */}
+              {(isLicenseExpired(member.licence_expire_date) || isLicenseExpiringSoon(member.licence_expire_date)) && (
+                <div className={`flex items-center text-xs px-2 py-1 rounded-full ${
+                  isLicenseExpired(member.licence_expire_date) 
+                    ? 'bg-red-900/20 text-red-400 border border-red-500/30' 
+                    : 'bg-orange-900/20 text-orange-400 border border-orange-500/30'
+                }`}>
+                  <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
-                  <span className="truncate">Age {calculateAge(member.date_of_birth)}</span>
-                </div>
-              )}
-
-              {member.membership_type && (
-                <div className="flex items-center text-sm text-gray-300">
-                  <svg className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="truncate">{member.membership_type}</span>
+                  {isLicenseExpired(member.licence_expire_date) ? 'License Expired' : 'License Expires Soon'}
                 </div>
               )}
             </div>
 
-            {/* Address */}
-            {(member.address || member.city) && (
-              <div className="mb-4">
-                <div className="flex items-start text-sm text-gray-300">
-                  <svg className="w-4 h-4 mr-2 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <div className="min-w-0 flex-1">
-                    {member.address && <div className="truncate">{member.address}</div>}
-                    {member.city && <div className="truncate">{member.city}{member.postcode && `, ${member.postcode}`}</div>}
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {/* Join Date */}
-            <div className="flex items-center justify-between text-sm text-gray-400">
-              <span>Joined {formatDate(member.join_date)}</span>
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-xs">Click to view</span>
-              </div>
-            </div>
           </div>
         ))}
       </div>
