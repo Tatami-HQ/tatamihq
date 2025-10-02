@@ -6,6 +6,12 @@ import type { Member } from '../app/members/page'
 interface AddMemberModalProps {
   onClose: () => void
   onAddMember: (memberData: Omit<Member, 'members_id' | 'created_at' | 'updated_at'>) => Promise<void>
+  prefillData?: {
+    first_name?: string
+    last_name?: string
+    phone?: string
+    email_address?: string
+  }
 }
 
 const membershipTypes = [
@@ -23,13 +29,13 @@ const statusOptions = [
   'Inactive'
 ]
 
-export default function AddMemberModal({ onClose, onAddMember }: AddMemberModalProps) {
+export default function AddMemberModal({ onClose, onAddMember, prefillData }: AddMemberModalProps) {
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
+    first_name: prefillData?.first_name || '',
+    last_name: prefillData?.last_name || '',
     date_of_birth: '',
-    email_address: '',
-    phone: '',
+    email_address: prefillData?.email_address || '',
+    phone: prefillData?.phone || '',
     gender: '' as 'Male' | 'Female' | null,
     profile_picture_url: '',
     address: '',
@@ -47,6 +53,8 @@ export default function AddMemberModal({ onClose, onAddMember }: AddMemberModalP
   const [error, setError] = useState('')
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 3
+  const [profileImage, setProfileImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     console.log('=== FORM SUBMIT TRIGGERED ===')
@@ -81,7 +89,7 @@ export default function AddMemberModal({ onClose, onAddMember }: AddMemberModalP
       }
 
       // Convert empty strings to null for optional fields
-      const memberData = {
+      let memberData = {
         first_name: formData.first_name.trim() || null,
         last_name: formData.last_name.trim() || null,
         date_of_birth: formData.date_of_birth || null,
@@ -101,9 +109,22 @@ export default function AddMemberModal({ onClose, onAddMember }: AddMemberModalP
         notes: formData.notes.trim() || null
       }
 
-      console.log('Calling onAddMember with:', memberData)
-      await onAddMember(memberData)
-      console.log('onAddMember completed successfully')
+      // If there's a new image, convert it to data URL
+      if (profileImage) {
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+          const dataUrl = e.target?.result as string
+          memberData.profile_picture_url = dataUrl
+          console.log('Calling onAddMember with:', memberData)
+          await onAddMember(memberData)
+          console.log('onAddMember completed successfully')
+        }
+        reader.readAsDataURL(profileImage)
+      } else {
+        console.log('Calling onAddMember with:', memberData)
+        await onAddMember(memberData)
+        console.log('onAddMember completed successfully')
+      }
     } catch (error) {
       console.error('[AddMemberModal:handleSubmit] Error adding member:', error)
       setError('Failed to add member. Please try again.')
@@ -115,6 +136,37 @@ export default function AddMemberModal({ onClose, onAddMember }: AddMemberModalP
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (error) setError('') // Clear error when user starts typing
+  }
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file')
+        return
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size must be less than 5MB')
+        return
+      }
+      
+      setProfileImage(file)
+      
+      // Create preview URL
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removeImage = () => {
+    setProfileImage(null)
+    setImagePreview(null)
   }
 
   const nextStep = () => {
@@ -396,19 +448,53 @@ export default function AddMemberModal({ onClose, onAddMember }: AddMemberModalP
         </select>
       </div>
 
-      {/* Profile Picture URL */}
+      {/* Profile Picture Upload */}
       <div>
-        <label htmlFor="profile_picture_url" className="block text-sm font-medium text-gray-300 mb-2">
-          Profile Picture URL
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Profile Picture
         </label>
-        <input
-          type="url"
-          id="profile_picture_url"
-          value={formData.profile_picture_url}
-          onChange={(e) => handleChange('profile_picture_url', e.target.value)}
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Enter profile picture URL"
-        />
+        <div className="space-y-3">
+          <div className="flex items-center space-x-4">
+            <div className="flex-shrink-0">
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="Profile preview"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-white/20"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg">
+                  {formData.first_name?.[0]?.toUpperCase()}{formData.last_name?.[0]?.toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center space-x-3">
+                <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  Choose Image
+                </label>
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Upload a profile picture (JPG, PNG, GIF - Max 5MB)
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Notes */}
@@ -508,7 +594,6 @@ export default function AddMemberModal({ onClose, onAddMember }: AddMemberModalP
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  onClick={() => console.log('Add Member button clicked!')}
                   className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center"
                 >
                   {isSubmitting ? (

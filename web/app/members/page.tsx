@@ -7,6 +7,7 @@ import type { User } from '@supabase/supabase-js'
 import Sidebar from '@/components/Sidebar'
 import ProfileDropdown from '@/components/ProfileDropdown'
 import MembersTable from '../../components/MembersTable'
+import MembersCards from '../../components/MembersCards'
 import AddMemberModal from '../../components/AddMemberModal'
 
 export interface Member {
@@ -42,53 +43,125 @@ export default function MembersPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards')
+  const [showFilters, setShowFilters] = useState(false)
+  const [sortField, setSortField] = useState<'name' | 'email' | 'join_date' | 'status' | 'age'>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'Inactive'>('all')
+  const [membershipTypeFilter, setMembershipTypeFilter] = useState<string>('all')
+  const [genderFilter, setGenderFilter] = useState<'all' | 'Male' | 'Female'>('all')
   const router = useRouter()
 
-  // Search function - searches across the entire member record as one string
-  const searchMembers = (query: string) => {
-    if (!query.trim()) {
-      setFilteredMembers(members)
-      return
+  // Filter and sort function
+  const filterAndSortMembers = () => {
+    let filtered = [...members]
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const searchTerm = searchQuery.toLowerCase().trim()
+      
+      filtered = filtered.filter(member => {
+        // Create one big searchable string from all member data
+        const fullMemberString = [
+          member.first_name,
+          member.last_name,
+          member.email_address,
+          member.phone,
+          member.address,
+          member.city,
+          member.postcode,
+          member.emergency_contact_name,
+          member.emergency_contact_phone,
+          member.medical_info,
+          member.membership_type,
+          member.notes,
+          member.status,
+          member.date_of_birth,
+          member.gender
+        ]
+        .filter(Boolean) // Remove null/undefined values
+        .join(' ') // Join all fields with spaces
+        .toLowerCase()
+
+        // Search in the combined string
+        return fullMemberString.includes(searchTerm)
+      })
     }
 
-    const searchTerm = query.toLowerCase().trim()
-    
-    const filtered = members.filter(member => {
-      // Create one big searchable string from all member data
-      const fullMemberString = [
-        member.first_name,
-        member.last_name,
-        member.email_address,
-        member.phone,
-        member.address,
-        member.city,
-        member.postcode,
-        member.emergency_contact_name,
-        member.emergency_contact_phone,
-        member.medical_info,
-        member.membership_type,
-        member.notes,
-        member.status,
-        member.date_of_birth,
-        member.gender
-      ]
-      .filter(Boolean) // Remove null/undefined values
-      .join(' ') // Join all fields with spaces
-      .toLowerCase()
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(member => member.status === statusFilter)
+    }
 
-      // Search in the combined string
-      return fullMemberString.includes(searchTerm)
+    // Apply membership type filter
+    if (membershipTypeFilter !== 'all') {
+      filtered = filtered.filter(member => member.membership_type === membershipTypeFilter)
+    }
+
+    // Apply gender filter
+    if (genderFilter !== 'all') {
+      filtered = filtered.filter(member => member.gender === genderFilter)
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any
+      let bValue: any
+
+      switch (sortField) {
+        case 'name':
+          aValue = `${a.first_name || ''} ${a.last_name || ''}`.trim().toLowerCase()
+          bValue = `${b.first_name || ''} ${b.last_name || ''}`.trim().toLowerCase()
+          break
+        case 'email':
+          aValue = (a.email_address || '').toLowerCase()
+          bValue = (b.email_address || '').toLowerCase()
+          break
+        case 'join_date':
+          aValue = new Date(a.join_date || '1900-01-01')
+          bValue = new Date(b.join_date || '1900-01-01')
+          break
+        case 'status':
+          aValue = a.status || ''
+          bValue = b.status || ''
+          break
+        case 'age':
+          aValue = calculateAge(a.date_of_birth)
+          bValue = calculateAge(b.date_of_birth)
+          break
+        default:
+          return 0
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
+      return 0
     })
 
     setFilteredMembers(filtered)
   }
 
-  // Update filtered members when search query changes
+  // Helper function to calculate age
+  const calculateAge = (dob: string | null) => {
+    if (!dob) return 0
+    const today = new Date()
+    const birthDate = new Date(dob)
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    
+    return age
+  }
+
+  // Update filtered members when filters or sort changes
   useEffect(() => {
     if (members.length > 0) {
-      searchMembers(searchQuery)
+      filterAndSortMembers()
     }
-  }, [searchQuery, members])
+  }, [searchQuery, members, sortField, sortOrder, statusFilter, membershipTypeFilter, genderFilter])
 
   useEffect(() => {
     const getUser = async () => {
@@ -348,17 +421,51 @@ export default function MembersPage() {
               <div className="text-sm text-gray-400">
                 {isLoadingMembers ? 'Loading...' : `${filteredMembers.length} of ${members.length} member${members.length !== 1 ? 's' : ''}`}
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
+              
+              {/* Filter Button */}
               <button
-                onClick={addTestMember}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  showFilters 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-white/10 text-gray-400 hover:text-white'
+                }`}
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
-                Add Test Member
+                Filters & Sort
               </button>
+            </div>
+            <div className="flex items-center space-x-3">
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-white/10 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    viewMode === 'cards' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    viewMode === 'table' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0V4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" />
+                  </svg>
+                </button>
+              </div>
+              
               <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center"
@@ -370,6 +477,91 @@ export default function MembersPage() {
               </button>
             </div>
           </div>
+
+          {/* Filters and Sort Panel */}
+          {showFilters && (
+            <div className="mb-6 bg-white/5 rounded-lg border border-white/10 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Sort Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Sort by</label>
+                  <select
+                    value={sortField}
+                    onChange={(e) => setSortField(e.target.value as 'name' | 'email' | 'join_date' | 'status' | 'age')}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="name" className="bg-gray-800">Name</option>
+                    <option value="email" className="bg-gray-800">Email</option>
+                    <option value="join_date" className="bg-gray-800">Join Date</option>
+                    <option value="status" className="bg-gray-800">Status</option>
+                    <option value="age" className="bg-gray-800">Age</option>
+                  </select>
+                </div>
+
+                {/* Sort Order */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Order</label>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="asc" className="bg-gray-800">Ascending</option>
+                    <option value="desc" className="bg-gray-800">Descending</option>
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as 'all' | 'Active' | 'Inactive')}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all" className="bg-gray-800">All Statuses</option>
+                    <option value="Active" className="bg-gray-800">Active</option>
+                    <option value="Inactive" className="bg-gray-800">Inactive</option>
+                  </select>
+                </div>
+
+                {/* Membership Type Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Membership Type</label>
+                  <select
+                    value={membershipTypeFilter}
+                    onChange={(e) => setMembershipTypeFilter(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all" className="bg-gray-800">All Types</option>
+                    <option value="Monthly" className="bg-gray-800">Monthly</option>
+                    <option value="Quarterly" className="bg-gray-800">Quarterly</option>
+                    <option value="Annual" className="bg-gray-800">Annual</option>
+                    <option value="Family" className="bg-gray-800">Family</option>
+                    <option value="Student" className="bg-gray-800">Student</option>
+                    <option value="Senior" className="bg-gray-800">Senior</option>
+                    <option value="Trial" className="bg-gray-800">Trial</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Clear Filters Button */}
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                    setStatusFilter('all')
+                    setMembershipTypeFilter('all')
+                    setGenderFilter('all')
+                    setSortField('name')
+                    setSortOrder('asc')
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors duration-200 text-sm"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Search Bar */}
           <div className="mb-6">
@@ -404,13 +596,22 @@ export default function MembersPage() {
             )}
           </div>
 
-          {/* Members Table */}
-          <MembersTable
-            members={filteredMembers}
-            isLoading={isLoadingMembers}
-            onUpdateMember={handleUpdateMember}
-            onDeleteMember={handleDeleteMember}
-          />
+          {/* Members View */}
+          {viewMode === 'table' ? (
+            <MembersTable
+              members={filteredMembers}
+              isLoading={isLoadingMembers}
+              onUpdateMember={handleUpdateMember}
+              onDeleteMember={handleDeleteMember}
+            />
+          ) : (
+            <MembersCards
+              members={filteredMembers}
+              isLoading={isLoadingMembers}
+              onUpdateMember={handleUpdateMember}
+              onDeleteMember={handleDeleteMember}
+            />
+          )}
         </main>
       </div>
 

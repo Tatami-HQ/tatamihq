@@ -11,6 +11,9 @@ interface MembersTableProps {
   onDeleteMember: (id: number) => Promise<void>
 }
 
+type SortField = 'name' | 'email' | 'join_date' | 'status' | 'age'
+type SortOrder = 'asc' | 'desc'
+
 const statusColors = {
   Active: 'bg-green-900/20 text-green-400 border-green-500/30',
   Inactive: 'bg-gray-900/20 text-gray-400 border-gray-500/30'
@@ -124,25 +127,25 @@ export default function MembersTable({
         <table className="w-full">
           <thead className="bg-white/5 border-b border-white/10">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-6 text-left text-sm font-medium text-gray-400 uppercase tracking-wider">
                 Name
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-6 text-left text-sm font-medium text-gray-400 uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-6 text-left text-sm font-medium text-gray-400 uppercase tracking-wider">
                 Phone
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-6 text-left text-sm font-medium text-gray-400 uppercase tracking-wider">
                 Age
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-6 text-left text-sm font-medium text-gray-400 uppercase tracking-wider">
                 Join Date
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-6 text-left text-sm font-medium text-gray-400 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-6 text-right text-sm font-medium text-gray-400 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -151,10 +154,10 @@ export default function MembersTable({
             {members.map((member) => (
               <tr 
                 key={member.members_id} 
-                className="hover:bg-white/5 transition-colors duration-150 cursor-pointer"
+                className="hover:bg-white/5 hover:shadow-md hover:shadow-blue-500/10 transition-all duration-200 cursor-pointer group"
                 onClick={() => setSelectedMember(member)}
               >
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-6 whitespace-nowrap">
                   {editingId === member.members_id ? (
                     <div className="flex space-x-2">
                       <input
@@ -173,12 +176,34 @@ export default function MembersTable({
                       />
                     </div>
                   ) : (
-                    <div className="text-sm font-medium text-white">
-                      {member.first_name} {member.last_name}
+                    <div className="flex items-center space-x-3">
+                      {/* Profile Picture */}
+                      <div className="flex-shrink-0">
+                        {member.profile_picture_url ? (
+                          <img
+                            src={member.profile_picture_url}
+                            alt={`${member.first_name} ${member.last_name}`}
+                            className="w-16 h-16 rounded-full object-cover border-2 border-white/20"
+                            onError={(e) => {
+                              // Fallback to avatar if image fails to load
+                              e.currentTarget.style.display = 'none'
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg ${member.profile_picture_url ? 'hidden' : ''}`}>
+                          {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
+                        </div>
+                      </div>
+                      
+                      {/* Name */}
+                      <div className="text-base font-medium text-white">
+                        {member.first_name} {member.last_name}
+                      </div>
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-6 whitespace-nowrap">
                   {editingId === member.members_id ? (
                     <input
                       type="email"
@@ -188,12 +213,12 @@ export default function MembersTable({
                       placeholder="Email address"
                     />
                   ) : (
-                    <div className="text-sm text-gray-300">
+                    <div className="text-base text-gray-300">
                       {member.email_address}
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-6 whitespace-nowrap">
                   {editingId === member.members_id ? (
                     <input
                       type="tel"
@@ -203,22 +228,22 @@ export default function MembersTable({
                       placeholder="Phone number"
                     />
                   ) : (
-                    <div className="text-sm text-gray-300">
+                    <div className="text-base text-gray-300">
                       {member.phone || 'N/A'}
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-300">
+                <td className="px-6 py-6 whitespace-nowrap">
+                  <div className="text-base text-gray-300">
                     {calculateAge(member.date_of_birth)} years old
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-300">
+                <td className="px-6 py-6 whitespace-nowrap">
+                  <div className="text-base text-gray-300">
                     {formatDate(member.join_date)}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-6 whitespace-nowrap">
                   {editingId === member.members_id ? (
                     <select
                       value={editForm.status || ''}
@@ -229,12 +254,12 @@ export default function MembersTable({
                       <option value="Inactive" className="bg-gray-800">Inactive</option>
                     </select>
                   ) : (
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColors[member.status]}`}>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusColors[member.status]}`}>
                       {member.status}
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-6 py-6 whitespace-nowrap text-right text-sm font-medium">
                   {editingId === member.members_id ? (
                     <div className="flex items-center justify-end space-x-2">
                       <button
