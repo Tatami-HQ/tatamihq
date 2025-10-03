@@ -77,6 +77,7 @@ export default function MemberProfileModal({
   
   const [isLoadingBelts, setIsLoadingBelts] = useState(false)
   const [isSavingBelt, setIsSavingBelt] = useState(false)
+  const [showImageOptions, setShowImageOptions] = useState(false)
 
   // Load martial arts data when component mounts
   useEffect(() => {
@@ -272,6 +273,36 @@ export default function MemberProfileModal({
       }
       reader.readAsDataURL(file)
     }
+    setShowImageOptions(false)
+  }
+
+  const handleTakePicture = () => {
+    // Create a file input for camera
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.capture = 'environment' // Use back camera on mobile
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        setProfileImage(file)
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          setImagePreview(e.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+      }
+    }
+    input.click()
+    setShowImageOptions(false)
+  }
+
+  const handleViewImage = () => {
+    if (imagePreview || member.profile_picture_url) {
+      // Open image in new tab/window
+      window.open(imagePreview || member.profile_picture_url || '', '_blank')
+    }
+    setShowImageOptions(false)
   }
 
   const removeImage = () => {
@@ -464,65 +495,117 @@ export default function MemberProfileModal({
         <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
           {activeTab === 'details' && (
             <div className="space-y-6">
-              {/* Profile Picture Upload */}
-              <div className="mb-6">
-                <span className="text-sm text-gray-400 mb-3 block">Profile Picture:</span>
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
+              {/* Profile Picture - Centered and Clickable */}
+              <div className="mb-8 flex flex-col items-center">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowImageOptions(true)}
+                    className="group relative cursor-pointer transition-transform duration-200 hover:scale-105"
+                  >
                     {imagePreview ? (
                       <img
                         src={imagePreview}
                         alt="Profile preview"
-                        className="w-20 h-20 rounded-full object-cover border-2 border-white/20"
+                        className="w-24 h-24 rounded-full object-cover border-4 border-white/20 shadow-lg"
                       />
                     ) : member.profile_picture_url ? (
                       <img
                         src={member.profile_picture_url}
                         alt={`${member.first_name} ${member.last_name}`}
-                        className="w-20 h-20 rounded-full object-cover border-2 border-white/20"
+                        className="w-24 h-24 rounded-full object-cover border-4 border-white/20 shadow-lg"
                       />
                     ) : (
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-2xl">
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-3xl shadow-lg">
                         {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
                       </div>
                     )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </button>
+                  
+                  {/* Action buttons for new image */}
+                  {imagePreview && (
+                    <div className="mt-3 flex items-center justify-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  Tap to change profile picture
+                </p>
+              </div>
+
+              {/* Image Options Modal */}
+              {showImageOptions && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-gray-900 rounded-lg shadow-xl max-w-sm w-full p-6">
+                    <h3 className="text-lg font-medium text-white mb-4 text-center">Profile Picture Options</h3>
+                    <div className="space-y-3">
+                      {(imagePreview || member.profile_picture_url) && (
+                        <button
+                          onClick={handleViewImage}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <span>View Current Picture</span>
+                        </button>
+                      )}
+                      
+                      <label className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2 cursor-pointer">
                         <input
                           type="file"
                           accept="image/*"
                           onChange={handleImageUpload}
                           className="hidden"
                         />
-                        Choose Image
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span>Upload from Gallery</span>
                       </label>
-                      {(imagePreview || member.profile_picture_url) && (
-                        <button
-                          type="button"
-                          onClick={removeImage}
-                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                        >
-                          Remove
-                        </button>
-                      )}
-                      {imagePreview && (
-                        <button
-                          type="button"
-                          onClick={handleSave}
-                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                        >
-                          Save Image
-                        </button>
-                      )}
+                      
+                      <button
+                        onClick={handleTakePicture}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>Take Picture</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => setShowImageOptions(false)}
+                        className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200"
+                      >
+                        Cancel
+                      </button>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Upload a profile picture (JPG, PNG, GIF - Max 5MB)
-                    </p>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Personal Information */}
               <div className="space-y-4">
