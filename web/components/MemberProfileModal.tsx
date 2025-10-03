@@ -607,6 +607,39 @@ export default function MemberProfileModal({
                 </div>
               )}
 
+              {/* Member Status Toggle */}
+              <div className="mb-6 flex justify-center">
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm text-gray-400">Member Status:</span>
+                    <button
+                      onClick={() => {
+                        const newStatus = (editForm.status || member.status) === 'Active' ? 'Inactive' : 'Active'
+                        handleFieldChange('status', newStatus)
+                        handleFieldBlur('status', newStatus)
+                      }}
+                      className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                        (editForm.status || member.status) === 'Active' ? 'bg-green-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-200 ${
+                          (editForm.status || member.status) === 'Active' ? 'translate-x-9' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-sm font-medium ${
+                      (editForm.status || member.status) === 'Active' ? 'text-green-400' : 'text-gray-400'
+                    }`}>
+                      {(editForm.status || member.status) === 'Active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Inactive members are kept in the database but hidden from the members list
+                  </p>
+                </div>
+              </div>
+
               {/* Personal Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Personal Information</h3>
@@ -691,18 +724,6 @@ export default function MemberProfileModal({
                 <h3 className="text-lg font-medium text-white mb-4">Membership Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-sm text-gray-400">Status</span>
-                    <select
-                      value={editForm.status || member.status || 'Active'}
-                      onChange={(e) => handleFieldChange('status', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('status', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                  </div>
-                  <div>
                     <span className="text-sm text-gray-400">Membership Type</span>
                     <select
                       value={editForm.membership_type || member.membership_type || ''}
@@ -720,7 +741,7 @@ export default function MemberProfileModal({
                       <option value="Trial">Trial</option>
                     </select>
                   </div>
-                  <div className="sm:col-span-2">
+                  <div>
                     <span className="text-sm text-gray-400">Join Date</span>
                     <input
                       type="date"
@@ -1026,19 +1047,21 @@ export default function MemberProfileModal({
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
+            className="w-full sm:w-auto sm:px-4 sm:py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
           >
             {isDeleting ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Deleting Member...</span>
+                <span className="sm:hidden">Deleting Member...</span>
+                <span className="hidden sm:inline">Deleting...</span>
               </>
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                <span>Delete Member</span>
+                <span className="sm:hidden">Delete Member</span>
+                <span className="hidden sm:inline">Delete</span>
               </>
             )}
           </button>
