@@ -405,42 +405,38 @@ export default function MemberProfileModal({
                 </div>
               )}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center space-x-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">
-                    {member.first_name} {member.last_name}
-                  </h2>
-                  <p className="text-sm text-gray-400">Member Profile</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-400">Status:</span>
-                  <button
-                    onClick={() => {
-                      const newStatus = (editForm.status || member.status) === 'Active' ? 'Inactive' : 'Active'
-                      handleFieldChange('status', newStatus)
-                      handleFieldBlur('status', newStatus)
-                    }}
-                    className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                      (editForm.status || member.status) === 'Active' ? 'bg-green-600' : 'bg-gray-600'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                        (editForm.status || member.status) === 'Active' ? 'translate-x-7' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                  <span className={`text-sm font-medium ${
-                    (editForm.status || member.status) === 'Active' ? 'text-green-400' : 'text-gray-400'
-                  }`}>
-                    {(editForm.status || member.status) === 'Active' ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">
+                {member.first_name} {member.last_name}
+              </h2>
+              <p className="text-sm text-gray-400">Member Profile</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-400">Status:</span>
+              <button
+                onClick={() => {
+                  const newStatus = (editForm.status || member.status) === 'Active' ? 'Inactive' : 'Active'
+                  handleFieldChange('status', newStatus)
+                  handleFieldBlur('status', newStatus)
+                }}
+                className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                  (editForm.status || member.status) === 'Active' ? 'bg-green-600' : 'bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                    (editForm.status || member.status) === 'Active' ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <span className={`text-sm font-medium ${
+                (editForm.status || member.status) === 'Active' ? 'text-green-400' : 'text-gray-400'
+              }`}>
+                {(editForm.status || member.status) === 'Active' ? 'Active' : 'Inactive'}
+              </span>
+            </div>
             {isSaving && (
               <div className="flex items-center text-blue-400 text-sm">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-2"></div>
