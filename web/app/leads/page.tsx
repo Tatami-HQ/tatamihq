@@ -41,7 +41,7 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [error, setError] = useState('')
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null)
-  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set(['new', 'contacted', 'booked', 'attended_trial']))
+  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const router = useRouter()
 
@@ -77,6 +77,35 @@ export default function LeadsPage() {
       fetchLeads()
     }
   }, [user])
+
+  // Set initial collapsed state based on screen size
+  useEffect(() => {
+    const setInitialCollapsedState = () => {
+      const isMobile = window.innerWidth < 768 // md breakpoint
+      if (isMobile) {
+        // Mobile: collapse all sections by default
+        setCollapsedStages(new Set(['new', 'contacted', 'booked', 'attended_trial']))
+      } else {
+        // Desktop: expand all sections by default
+        setCollapsedStages(new Set())
+      }
+    }
+
+    setInitialCollapsedState()
+    
+    // Listen for resize events to update collapsed state
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 768
+      if (isMobile) {
+        setCollapsedStages(new Set(['new', 'contacted', 'booked', 'attended_trial']))
+      } else {
+        setCollapsedStages(new Set())
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const fetchLeads = async () => {
     try {
@@ -423,12 +452,6 @@ export default function LeadsPage() {
               <span className="hidden sm:inline">Drag lead cards between stages to update their status</span>
               <span className="sm:hidden">Tap sections to expand/collapse</span>
             </div>
-            <div className="flex items-center text-xs">
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <span>Use arrow buttons on mobile to move leads forward</span>
-            </div>
           </div>
 
           {/* Pipeline Board */}
@@ -439,17 +462,13 @@ export default function LeadsPage() {
               return (
                 <div
                   key={stage.key}
-                  className={`bg-white/5 border border-white/10 rounded-lg transition-all duration-300 ${
-                    collapsedStages.has(stage.key) 
-                      ? 'md:min-h-[700px] md:max-h-[80vh] md:overflow-y-auto' 
-                      : 'md:min-h-[700px] md:max-h-[80vh] md:overflow-y-auto'
-                  }`}
+                  className="bg-white/5 border border-white/10 rounded-lg flex flex-col h-[80vh] md:h-[85vh]"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, stage.key as Lead['status'])}
                 >
-                  {/* Stage Header - Always visible */}
+                  {/* Stage Header - Frozen/Sticky */}
                   <div 
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors bg-white/5 border-b border-white/10 sticky top-0 z-10 flex-shrink-0"
                     onClick={() => toggleStage(stage.key)}
                   >
                     <div className="flex items-center space-x-2">
@@ -473,13 +492,13 @@ export default function LeadsPage() {
                     </div>
                   </div>
 
-                  {/* Stage Content - Collapsible */}
-                  <div className={`transition-all duration-300 overflow-hidden ${
+                  {/* Stage Content - Scrollable */}
+                  <div className={`flex-1 transition-all duration-300 overflow-hidden ${
                     collapsedStages.has(stage.key) 
                       ? 'max-h-0 opacity-0' 
-                      : 'max-h-[1000px] opacity-100'
+                      : 'max-h-full opacity-100'
                   }`}>
-                    <div className="px-4 pb-4 space-y-3">
+                    <div className="h-full overflow-y-auto scrollbar-hide px-4 py-4 space-y-3">
                       {isLoadingLeads ? (
                         <div className="flex items-center justify-center py-8">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
