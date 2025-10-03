@@ -265,7 +265,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-blue-500/30 text-sm font-medium rounded-lg text-white bg-blue-600/20 backdrop-blur-sm hover:bg-blue-600/50 hover:border-blue-400/80 hover:shadow-blue-500/25 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
+              className="group relative w-full flex justify-center py-3 px-4 border border-blue-500 text-sm font-medium rounded-lg text-white bg-blue-500 hover:bg-blue-600 hover:border-blue-400 hover:shadow-blue-500/30 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg font-semibold"
             >
               {isLoading ? (
                 <div className="flex items-center">
