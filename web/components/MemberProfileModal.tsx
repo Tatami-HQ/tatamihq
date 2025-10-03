@@ -463,74 +463,73 @@ export default function MemberProfileModal({
         {/* Content */}
         <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
           {activeTab === 'details' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Basic Info */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Basic Information</h3>
-                
-                {/* Profile Picture Upload */}
-                <div className="mb-6">
-                  <span className="text-sm text-gray-400 mb-3 block">Profile Picture:</span>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">
-                      {imagePreview ? (
-                        <img
-                          src={imagePreview}
-                          alt="Profile preview"
-                          className="w-20 h-20 rounded-full object-cover border-2 border-white/20"
+            <div className="space-y-6">
+              {/* Profile Picture Upload */}
+              <div className="mb-6">
+                <span className="text-sm text-gray-400 mb-3 block">Profile Picture:</span>
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0">
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt="Profile preview"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-white/20"
+                      />
+                    ) : member.profile_picture_url ? (
+                      <img
+                        src={member.profile_picture_url}
+                        alt={`${member.first_name} ${member.last_name}`}
+                        className="w-20 h-20 rounded-full object-cover border-2 border-white/20"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-2xl">
+                        {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
                         />
-                      ) : member.profile_picture_url ? (
-                        <img
-                          src={member.profile_picture_url}
-                          alt={`${member.first_name} ${member.last_name}`}
-                          className="w-20 h-20 rounded-full object-cover border-2 border-white/20"
-                        />
-                      ) : (
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-2xl">
-                          {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
-                        </div>
+                        Choose Image
+                      </label>
+                      {(imagePreview || member.profile_picture_url) && (
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                        >
+                          Remove
+                        </button>
+                      )}
+                      {imagePreview && (
+                        <button
+                          type="button"
+                          onClick={handleSave}
+                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                        >
+                          Save Image
+                        </button>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                          Choose Image
-                        </label>
-                        {(imagePreview || member.profile_picture_url) && (
-                          <button
-                            type="button"
-                            onClick={removeImage}
-                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                          >
-                            Remove
-                          </button>
-                        )}
-                        {imagePreview && (
-                          <button
-                            type="button"
-                            onClick={handleSave}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                          >
-                            Save Image
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Upload a profile picture (JPG, PNG, GIF - Max 5MB)
-                      </p>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Upload a profile picture (JPG, PNG, GIF - Max 5MB)
+                    </p>
                   </div>
                 </div>
-                
-                <div className="space-y-3">
+              </div>
+
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-white mb-4">Personal Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-sm text-gray-400">First Name:</span>
+                    <span className="text-sm text-gray-400">First Name *</span>
                     <input
                       type="text"
                       value={editForm.first_name || member.first_name || ''}
@@ -540,7 +539,7 @@ export default function MemberProfileModal({
                     />
                   </div>
                   <div>
-                    <span className="text-sm text-gray-400">Last Name:</span>
+                    <span className="text-sm text-gray-400">Last Name *</span>
                     <input
                       type="text"
                       value={editForm.last_name || member.last_name || ''}
@@ -550,27 +549,7 @@ export default function MemberProfileModal({
                     />
                   </div>
                   <div>
-                    <span className="text-sm text-gray-400">Email:</span>
-                    <input
-                      type="email"
-                      value={editForm.email_address || member.email_address || ''}
-                      onChange={(e) => handleFieldChange('email_address', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('email_address', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-400">Phone:</span>
-                    <input
-                      type="tel"
-                      value={editForm.phone || member.phone || ''}
-                      onChange={(e) => handleFieldChange('phone', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('phone', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-400">Date of Birth:</span>
+                    <span className="text-sm text-gray-400">Date of Birth</span>
                     <input
                       type="date"
                       value={editForm.date_of_birth || member.date_of_birth || ''}
@@ -580,7 +559,7 @@ export default function MemberProfileModal({
                     />
                   </div>
                   <div>
-                    <span className="text-sm text-gray-400">Gender:</span>
+                    <span className="text-sm text-gray-400">Gender</span>
                     <select
                       value={editForm.gender || member.gender || ''}
                       onChange={(e) => handleFieldChange('gender', e.target.value)}
@@ -595,12 +574,39 @@ export default function MemberProfileModal({
                 </div>
               </div>
 
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-white mb-4">Contact Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm text-gray-400">Email *</span>
+                    <input
+                      type="email"
+                      value={editForm.email_address || member.email_address || ''}
+                      onChange={(e) => handleFieldChange('email_address', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('email_address', e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-400">Phone</span>
+                    <input
+                      type="tel"
+                      value={editForm.phone || member.phone || ''}
+                      onChange={(e) => handleFieldChange('phone', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('phone', e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Membership Info */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Membership Information</h3>
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-sm text-gray-400">Status:</span>
+                    <span className="text-sm text-gray-400">Status</span>
                     <select
                       value={editForm.status || member.status || 'Active'}
                       onChange={(e) => handleFieldChange('status', e.target.value)}
@@ -612,17 +618,7 @@ export default function MemberProfileModal({
                     </select>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-400">Join Date:</span>
-                    <input
-                      type="date"
-                      value={editForm.join_date || member.join_date || ''}
-                      onChange={(e) => handleFieldChange('join_date', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('join_date', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-400">Membership Type:</span>
+                    <span className="text-sm text-gray-400">Membership Type</span>
                     <select
                       value={editForm.membership_type || member.membership_type || ''}
                       onChange={(e) => handleFieldChange('membership_type', e.target.value)}
@@ -639,42 +635,57 @@ export default function MemberProfileModal({
                       <option value="Trial">Trial</option>
                     </select>
                   </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-sm text-gray-400">Join Date</span>
+                    <input
+                      type="date"
+                      value={editForm.join_date || member.join_date || ''}
+                      onChange={(e) => handleFieldChange('join_date', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('join_date', e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Address */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Address</h3>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <span className="text-sm text-gray-400">Address:</span>
+                    <span className="text-sm text-gray-400">Address</span>
                     <input
                       type="text"
                       value={editForm.address || member.address || ''}
                       onChange={(e) => handleFieldChange('address', e.target.value)}
                       onBlur={(e) => handleFieldBlur('address', e.target.value)}
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Street address"
                     />
                   </div>
-                  <div>
-                    <span className="text-sm text-gray-400">City:</span>
-                    <input
-                      type="text"
-                      value={editForm.city || member.city || ''}
-                      onChange={(e) => handleFieldChange('city', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('city', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-400">Postcode:</span>
-                    <input
-                      type="text"
-                      value={editForm.postcode || member.postcode || ''}
-                      onChange={(e) => handleFieldChange('postcode', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('postcode', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-sm text-gray-400">City</span>
+                      <input
+                        type="text"
+                        value={editForm.city || member.city || ''}
+                        onChange={(e) => handleFieldChange('city', e.target.value)}
+                        onBlur={(e) => handleFieldBlur('city', e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="City"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-400">Postcode</span>
+                      <input
+                        type="text"
+                        value={editForm.postcode || member.postcode || ''}
+                        onChange={(e) => handleFieldChange('postcode', e.target.value)}
+                        onBlur={(e) => handleFieldBlur('postcode', e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Postcode"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -682,57 +693,58 @@ export default function MemberProfileModal({
               {/* Emergency Contact */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Emergency Contact</h3>
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-sm text-gray-400">Name:</span>
+                    <span className="text-sm text-gray-400">Name</span>
                     <input
                       type="text"
                       value={editForm.emergency_contact_name || member.emergency_contact_name || ''}
                       onChange={(e) => handleFieldChange('emergency_contact_name', e.target.value)}
                       onBlur={(e) => handleFieldBlur('emergency_contact_name', e.target.value)}
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Emergency contact name"
                     />
                   </div>
                   <div>
-                    <span className="text-sm text-gray-400">Phone:</span>
+                    <span className="text-sm text-gray-400">Phone</span>
                     <input
                       type="tel"
                       value={editForm.emergency_contact_phone || member.emergency_contact_phone || ''}
                       onChange={(e) => handleFieldChange('emergency_contact_phone', e.target.value)}
                       onBlur={(e) => handleFieldBlur('emergency_contact_phone', e.target.value)}
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Emergency contact phone"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Medical Info */}
+              {/* Medical Info & Notes */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Medical Information</h3>
-                <div>
-                  <textarea
-                    value={editForm.medical_info || member.medical_info || ''}
-                    onChange={(e) => handleFieldChange('medical_info', e.target.value)}
-                    onBlur={(e) => handleFieldBlur('medical_info', e.target.value)}
-                    rows={3}
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder="Any medical conditions, allergies, or important health information..."
-                  />
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Notes</h3>
-                <div>
-                  <textarea
-                    value={editForm.notes || member.notes || ''}
-                    onChange={(e) => handleFieldChange('notes', e.target.value)}
-                    onBlur={(e) => handleFieldBlur('notes', e.target.value)}
-                    rows={3}
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder="Any additional notes about this member..."
-                  />
+                <h3 className="text-lg font-medium text-white mb-4">Additional Information</h3>
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-sm text-gray-400 mb-2 block">Medical Information</span>
+                    <textarea
+                      value={editForm.medical_info || member.medical_info || ''}
+                      onChange={(e) => handleFieldChange('medical_info', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('medical_info', e.target.value)}
+                      rows={3}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      placeholder="Any medical conditions, allergies, or important health information..."
+                    />
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-400 mb-2 block">Notes</span>
+                    <textarea
+                      value={editForm.notes || member.notes || ''}
+                      onChange={(e) => handleFieldChange('notes', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('notes', e.target.value)}
+                      rows={3}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      placeholder="Any additional notes about this member..."
+                    />
+                  </div>
                 </div>
               </div>
             </div>
