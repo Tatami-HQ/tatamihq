@@ -356,10 +356,10 @@ export default function MemberProfileModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-gray-900 rounded-none sm:rounded-lg shadow-xl max-w-4xl w-full h-full sm:max-h-[90vh] sm:h-auto flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
           <div className="flex items-center space-x-4">
             <div className="flex-shrink-0">
               {member.profile_picture_url ? (
@@ -382,13 +382,6 @@ export default function MemberProfileModal({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </button>
             {isSaving && (
               <div className="flex items-center text-blue-400 text-sm">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-2"></div>
@@ -408,7 +401,7 @@ export default function MemberProfileModal({
 
         {/* Tab Navigation */}
         <div className="border-b border-white/10">
-          <nav className="flex space-x-8 px-6">
+          <nav className="flex space-x-4 sm:space-x-8 px-4 sm:px-6 overflow-x-auto scrollbar-hide">
             {[
               { 
                 id: 'details', 
@@ -454,7 +447,7 @@ export default function MemberProfileModal({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as 'details' | 'qualifications' | 'competition' | 'grading')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 flex items-center space-x-2 ${
+                className={`py-3 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-sm transition-colors duration-200 flex items-center space-x-1 sm:space-x-2 whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-400'
                     : 'border-transparent text-gray-400 hover:text-white hover:border-gray-300'
@@ -468,7 +461,7 @@ export default function MemberProfileModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 flex-1 overflow-y-auto">
+        <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
           {activeTab === 'details' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Basic Info */}
@@ -929,6 +922,29 @@ export default function MemberProfileModal({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Delete Button - Bottom of Modal */}
+        <div className="border-t border-white/10 p-4 sm:p-6 bg-gray-900/50">
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
+          >
+            {isDeleting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Deleting Member...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Delete Member</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
