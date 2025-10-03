@@ -1040,31 +1040,29 @@ export default function MemberProfileModal({
               </div>
             </div>
           )}
-        </div>
 
-        {/* Delete Button - Bottom of Modal */}
-        <div className="border-t border-white/10 p-4 sm:p-6 bg-gray-900/50">
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="w-full sm:w-auto sm:px-4 sm:py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
-          >
-            {isDeleting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span className="sm:hidden">Deleting Member...</span>
-                <span className="hidden sm:inline">Deleting...</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span className="sm:hidden">Delete Member</span>
-                <span className="hidden sm:inline">Delete</span>
-              </>
-            )}
-          </button>
+          {/* Delete Button - Bottom Right of Content */}
+          <div className="mt-8 flex justify-end">
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>Delete Member</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
