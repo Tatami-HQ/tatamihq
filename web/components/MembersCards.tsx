@@ -102,11 +102,11 @@ export default function MembersCards({
   return (
     <div className="space-y-6">
       {/* Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
         {members.map((member) => (
           <div
             key={member.members_id}
-            className="bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/10 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-200 cursor-pointer group"
+            className="bg-white/5 border border-white/10 rounded-lg p-3 md:p-6 hover:bg-white/10 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-200 cursor-pointer group"
             onClick={() => setSelectedMember(member)}
           >
             {/* Card Layout */}
