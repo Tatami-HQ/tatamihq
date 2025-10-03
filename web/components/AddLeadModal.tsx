@@ -66,7 +66,7 @@ export default function AddLeadModal({ onClose, onAddLead }: AddLeadModalProps) 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-gray-900 rounded-lg border border-white/10 w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-white/10">

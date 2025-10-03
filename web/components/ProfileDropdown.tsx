@@ -73,8 +73,7 @@ export default function ProfileDropdown({ user, isLoggingOut, onLogout }: Profil
       ),
       onClick: () => {
         setIsOpen(false)
-        // TODO: Navigate to settings page
-        console.log('[ProfileDropdown] Settings clicked')
+        router.push('/settings')
       }
     },
     {

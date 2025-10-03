@@ -15,7 +15,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+    // Add error handling for refresh token issues
+    onRefreshTokenError: async (error) => {
+      console.warn('[Supabase] Refresh token error:', error)
+      // Clear the session when refresh token fails
+      await supabase.auth.signOut()
+    }
   }
 })
 

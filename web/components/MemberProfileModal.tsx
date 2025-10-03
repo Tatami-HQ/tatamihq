@@ -1,7 +1,45 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Member } from '../app/members/page'
+import { supabase } from '../lib/supabaseClient'
+
+interface MartialArt {
+  martial_art_id: number
+  created_at: string
+  name: string | null
+}
+
+interface MartialArtClass {
+  martial_art_classes_id: number
+  created_at: string
+  martial_art_id: number | null
+  name: string | null
+}
+
+interface BeltSystem {
+  belt_system_id: number
+  created_at: string
+  martial_art_id: number | null
+  martial_art_classes_id: number | null
+  belt_name: string | null
+  belt_order: number | null
+  colour_hex: string | null
+  updated_at: string | null
+}
+
+interface MemberBelt {
+  member_belts_id: number
+  created_at: string
+  members_id: number | null
+  martial_art_id: number | null
+  belt_system_id: number | null
+  awarded_date: string | null
+  martial_art_name?: string
+  class_name?: string
+  belt_name?: string
+  colour_hex?: string
+}
 
 interface MemberProfileModalProps {
   member: Member | null
@@ -22,6 +60,191 @@ export default function MemberProfileModal({
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<'details' | 'qualifications' | 'competition' | 'grading'>('details')
+  
+  // Martial arts data
+  const [martialArts, setMartialArts] = useState<MartialArt[]>([])
+  const [classes, setClasses] = useState<MartialArtClass[]>([])
+  const [belts, setBelts] = useState<BeltSystem[]>([])
+  const [memberBelts, setMemberBelts] = useState<MemberBelt[]>([])
+  
+  // Form state for new belt
+  const [newBeltForm, setNewBeltForm] = useState({
+    martial_art_id: '',
+    martial_art_classes_id: '',
+    belt_system_id: '',
+    awarded_date: ''
+  })
+  
+  const [isLoadingBelts, setIsLoadingBelts] = useState(false)
+  const [isSavingBelt, setIsSavingBelt] = useState(false)
+
+  // Load martial arts data when component mounts
+  useEffect(() => {
+    if (member) {
+      loadMartialArtsData()
+      loadMemberBelts()
+    }
+  }, [member])
+
+  const loadMartialArtsData = async () => {
+    try {
+      const [martialArtsRes, classesRes, beltsRes] = await Promise.all([
+        supabase.from('martial_art').select('*').order('name'),
+        supabase.from('martial_art_classes').select('*').order('name'),
+        supabase.from('belt_system').select('*').order('belt_order')
+      ])
+
+      if (martialArtsRes.data) setMartialArts(martialArtsRes.data)
+      if (classesRes.data) setClasses(classesRes.data)
+      if (beltsRes.data) setBelts(beltsRes.data)
+    } catch (error) {
+      console.error('Error loading martial arts data:', error)
+    }
+  }
+
+  const loadMemberBelts = async () => {
+    if (!member) return
+    
+    setIsLoadingBelts(true)
+    try {
+      const { data, error } = await supabase
+        .from('member_belts')
+        .select(`
+          *,
+          martial_art:martial_art_id(name),
+          belt_system:belt_system_id(belt_name, colour_hex, martial_art_classes_id)
+        `)
+        .eq('members_id', member.members_id)
+        .order('awarded_date', { ascending: false })
+
+      if (error) throw error
+
+      // Get class names separately for each belt
+      const formattedBelts = await Promise.all(
+        (data || []).map(async (belt) => {
+          let className = null
+          if (belt.belt_system?.martial_art_classes_id) {
+            const { data: classData } = await supabase
+              .from('martial_art_classes')
+              .select('name')
+              .eq('martial_art_classes_id', belt.belt_system.martial_art_classes_id)
+              .single()
+            className = classData?.name
+          }
+
+          return {
+            ...belt,
+            martial_art_name: belt.martial_art?.name,
+            belt_name: belt.belt_system?.belt_name,
+            colour_hex: belt.belt_system?.colour_hex,
+            class_name: className
+          }
+        })
+      )
+
+      setMemberBelts(formattedBelts)
+    } catch (error) {
+      console.error('Error loading member belts:', error)
+    } finally {
+      setIsLoadingBelts(false)
+    }
+  }
+
+  const handleMartialArtChange = (martialArtId: string) => {
+    setNewBeltForm(prev => ({
+      ...prev,
+      martial_art_id: martialArtId,
+      martial_art_classes_id: '',
+      belt_system_id: ''
+    }))
+  }
+
+  const handleClassChange = (classId: string) => {
+    setNewBeltForm(prev => ({
+      ...prev,
+      martial_art_classes_id: classId,
+      belt_system_id: ''
+    }))
+  }
+
+  const handleBeltChange = (beltId: string) => {
+    setNewBeltForm(prev => ({
+      ...prev,
+      belt_system_id: beltId
+    }))
+  }
+
+  const handleAddBelt = async () => {
+    if (!member || !newBeltForm.martial_art_id || !newBeltForm.belt_system_id || !newBeltForm.awarded_date) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    setIsSavingBelt(true)
+    try {
+      const { error } = await supabase
+        .from('member_belts')
+        .insert({
+          members_id: member.members_id,
+          martial_art_id: parseInt(newBeltForm.martial_art_id),
+          belt_system_id: parseInt(newBeltForm.belt_system_id),
+          awarded_date: newBeltForm.awarded_date
+        })
+
+      if (error) throw error
+
+      // Reset form
+      setNewBeltForm({
+        martial_art_id: '',
+        martial_art_classes_id: '',
+        belt_system_id: '',
+        awarded_date: ''
+      })
+
+      // Reload member belts
+      await loadMemberBelts()
+    } catch (error) {
+      console.error('Error adding member belt:', error)
+      alert('Error adding belt. Please try again.')
+    } finally {
+      setIsSavingBelt(false)
+    }
+  }
+
+  const handleDeleteBelt = async (beltId: number) => {
+    if (!confirm('Are you sure you want to delete this belt record?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('member_belts')
+        .delete()
+        .eq('member_belts_id', beltId)
+
+      if (error) throw error
+
+      // Reload member belts
+      await loadMemberBelts()
+    } catch (error) {
+      console.error('Error deleting member belt:', error)
+      alert('Error deleting belt. Please try again.')
+    }
+  }
+
+  // Filter classes and belts based on selections
+  const filteredClasses = classes.filter(classItem => 
+    !newBeltForm.martial_art_id || classItem.martial_art_id === parseInt(newBeltForm.martial_art_id)
+  )
+
+  const filteredBelts = belts.filter(belt => {
+    if (!newBeltForm.martial_art_id) return false
+    if (newBeltForm.martial_art_classes_id) {
+      return belt.martial_art_id === parseInt(newBeltForm.martial_art_id) && 
+             belt.martial_art_classes_id === parseInt(newBeltForm.martial_art_classes_id)
+    }
+    return belt.martial_art_id === parseInt(newBeltForm.martial_art_id)
+  })
 
   if (!member) return null
 
@@ -133,7 +356,7 @@ export default function MemberProfileModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10">
@@ -556,17 +779,153 @@ export default function MemberProfileModal({
 
           {activeTab === 'grading' && (
             <div className="space-y-6">
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22v-4" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 18h8" />
-                  </svg>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Add New Belt Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Add New Belt</h3>
+                  
+                  <div className="space-y-4">
+                    {/* Martial Art Selection */}
+                    <div>
+                      <label className="text-sm text-gray-400 mb-2 block">Martial Art *</label>
+                      <select
+                        value={newBeltForm.martial_art_id}
+                        onChange={(e) => handleMartialArtChange(e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Select martial art</option>
+                        {martialArts.map((art) => (
+                          <option key={art.martial_art_id} value={art.martial_art_id}>
+                            {art.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Class Selection */}
+                    <div>
+                      <label className="text-sm text-gray-400 mb-2 block">Class (Optional)</label>
+                      <select
+                        value={newBeltForm.martial_art_classes_id}
+                        onChange={(e) => handleClassChange(e.target.value)}
+                        disabled={!newBeltForm.martial_art_id}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Select class (optional)</option>
+                        {filteredClasses.map((classItem) => (
+                          <option key={classItem.martial_art_classes_id} value={classItem.martial_art_classes_id}>
+                            {classItem.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Belt Selection */}
+                    <div>
+                      <label className="text-sm text-gray-400 mb-2 block">Belt *</label>
+                      <select
+                        value={newBeltForm.belt_system_id}
+                        onChange={(e) => handleBeltChange(e.target.value)}
+                        disabled={!newBeltForm.martial_art_id}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Select belt</option>
+                        {filteredBelts.map((belt) => (
+                          <option key={belt.belt_system_id} value={belt.belt_system_id}>
+                            {belt.belt_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Awarded Date */}
+                    <div>
+                      <label className="text-sm text-gray-400 mb-2 block">Awarded Date *</label>
+                      <input
+                        type="date"
+                        value={newBeltForm.awarded_date}
+                        onChange={(e) => setNewBeltForm(prev => ({ ...prev, awarded_date: e.target.value }))}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    {/* Add Button */}
+                    <button
+                      onClick={handleAddBelt}
+                      disabled={isSavingBelt || !newBeltForm.martial_art_id || !newBeltForm.belt_system_id || !newBeltForm.awarded_date}
+                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
+                    >
+                      {isSavingBelt ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Adding...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span>Add Belt</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Grading History</h3>
-                <p className="text-gray-400">No gradings recorded yet</p>
-                <p className="text-sm text-gray-500 mt-2">This section will be populated over time</p>
+
+                {/* Current Belts Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Current Belts</h3>
+                  
+                  {isLoadingBelts ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+                    </div>
+                  ) : memberBelts.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-400">No belts recorded yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {memberBelts.map((belt) => (
+                        <div key={belt.member_belts_id} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              {belt.colour_hex && (
+                                <div 
+                                  className="w-4 h-4 rounded-full border border-white/20"
+                                  style={{ backgroundColor: belt.colour_hex }}
+                                ></div>
+                              )}
+                              <div>
+                                <h4 className="text-white font-medium">{belt.belt_name}</h4>
+                                <p className="text-sm text-gray-400">
+                                  {belt.martial_art_name}
+                                  {belt.class_name && ` • ${belt.class_name}`}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Awarded: {belt.awarded_date ? new Date(belt.awarded_date).toLocaleDateString() : 'Unknown'}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteBelt(belt.member_belts_id)}
+                              className="text-red-400 hover:text-red-300 transition-colors duration-200"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

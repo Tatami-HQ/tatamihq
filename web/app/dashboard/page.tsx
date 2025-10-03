@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import { handleAuthError, clearAuthSession } from '@/lib/authUtils'
 import type { User } from '@supabase/supabase-js'
 import Sidebar from '@/components/Sidebar'
 import ProfileDropdown from '@/components/ProfileDropdown'
 import MobileBottomNav from '@/components/MobileBottomNav'
+import AnimatedBackground from '@/components/AnimatedBackground'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -196,14 +198,30 @@ export default function DashboardPage() {
   useEffect(() => {
     const getUser = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { user }, error } = await supabase.auth.getUser()
+        
+        if (error) {
+          console.error('[Dashboard:getUser] Auth error:', error)
+          // Handle refresh token errors gracefully
+          const sessionCleared = await handleAuthError(error)
+          if (sessionCleared) {
+            router.push('/login')
+            return
+          }
+        }
+        
         setUser(user)
         if (user) {
           fetchMembersData()
           fetchLeadsData()
+        } else {
+          router.push('/login')
         }
       } catch (error) {
-        console.error('[Dashboard:getUser] Error fetching user:', error)
+        console.error('[Dashboard:getUser] Unexpected error:', error)
+        // Clear any potentially corrupted session
+        await clearAuthSession()
+        router.push('/login')
       } finally {
         setIsLoading(false)
       }
@@ -212,13 +230,18 @@ export default function DashboardPage() {
     getUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        console.log('[Dashboard:authStateChange] Event:', event, 'Session exists:', !!session)
+        
         if (event === 'SIGNED_OUT' || !session) {
+          setUser(null)
           router.push('/login')
-        } else if (session?.user) {
+        } else if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user)
           fetchMembersData()
           fetchLeadsData()
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          setUser(session.user)
         }
       }
     )
@@ -244,29 +267,35 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-black flex items-center justify-center relative">
+        <AnimatedBackground />
+        <div className="relative z-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">Redirecting to login...</div>
+      <div className="min-h-screen bg-black flex items-center justify-center relative">
+        <AnimatedBackground />
+        <div className="relative z-10 text-white">Redirecting to login...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-black overflow-x-hidden">
+    <div className="flex min-h-screen bg-black overflow-x-hidden relative">
+      {/* Animated Background */}
+      <AnimatedBackground />
       {/* Sidebar - Hidden on mobile */}
-      <div className="hidden sm:block">
+      <div className="hidden sm:block relative z-10">
         <Sidebar />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-x-hidden">
+      <div className="flex-1 flex flex-col overflow-x-hidden relative z-10">
         {/* Header */}
         <header className="bg-white/5 backdrop-blur-md border-b border-white/10 p-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -642,7 +671,9 @@ export default function DashboardPage() {
       </div>
       
       {/* Mobile Bottom Navigation */}
-      <MobileBottomNav />
+      <div className="relative z-10">
+        <MobileBottomNav />
+      </div>
     </div>
   )
 }
