@@ -527,7 +527,7 @@ export default function MemberProfileModal({
               {/* Personal Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Personal Information</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm text-gray-400">First Name *</span>
                     <input
@@ -548,6 +548,8 @@ export default function MemberProfileModal({
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm text-gray-400">Date of Birth</span>
                     <input
@@ -555,7 +557,7 @@ export default function MemberProfileModal({
                       value={editForm.date_of_birth || member.date_of_birth || ''}
                       onChange={(e) => handleFieldChange('date_of_birth', e.target.value)}
                       onBlur={(e) => handleFieldBlur('date_of_birth', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                     />
                   </div>
                   <div>
@@ -642,7 +644,7 @@ export default function MemberProfileModal({
                       value={editForm.join_date || member.join_date || ''}
                       onChange={(e) => handleFieldChange('join_date', e.target.value)}
                       onBlur={(e) => handleFieldBlur('join_date', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                     />
                   </div>
                 </div>
@@ -850,7 +852,7 @@ export default function MemberProfileModal({
                         type="date"
                         value={newBeltForm.awarded_date}
                         onChange={(e) => setNewBeltForm(prev => ({ ...prev, awarded_date: e.target.value }))}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                       />
                     </div>
 
