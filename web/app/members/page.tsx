@@ -406,7 +406,12 @@ export default function MembersPage() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 pb-20 sm:pb-6">
+        <main 
+          className="flex-1 p-4 sm:p-6 sm:pb-6"
+          style={{
+            paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))'
+          }}
+        >
           {/* Error Message */}
           {error && (
             <div className="mb-6 bg-red-900/20 border border-red-500/30 rounded-lg p-4">

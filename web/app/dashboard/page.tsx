@@ -280,7 +280,12 @@ export default function DashboardPage() {
         </header>
 
         {/* Dashboard Content */}
-        <main className="flex-1 p-4 sm:p-8 overflow-y-auto pb-20 sm:pb-8">
+        <main 
+          className="flex-1 p-4 sm:p-8 overflow-y-auto sm:pb-8"
+          style={{
+            paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))'
+          }}
+        >
           {/* Top Row Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 overflow-x-hidden">
             {/* Members Card */}

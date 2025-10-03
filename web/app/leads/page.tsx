@@ -41,6 +41,7 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [error, setError] = useState('')
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null)
+  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set(['new', 'contacted', 'booked', 'attended_trial']))
   const router = useRouter()
 
   useEffect(() => {
@@ -269,6 +270,33 @@ export default function LeadsPage() {
     return leads.filter(lead => lead.status === status)
   }
 
+  const toggleStage = (stageKey: string) => {
+    setCollapsedStages(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(stageKey)) {
+        newSet.delete(stageKey)
+      } else {
+        newSet.add(stageKey)
+      }
+      return newSet
+    })
+  }
+
+  const moveLeadToNextStage = async (lead: Lead) => {
+    const currentIndex = PIPELINE_STAGES.findIndex(stage => stage.key === lead.status)
+    if (currentIndex === -1 || currentIndex >= PIPELINE_STAGES.length - 1) return
+
+    const nextStage = PIPELINE_STAGES[currentIndex + 1]
+    const newStatus = nextStage.key as Lead['status']
+
+    try {
+      await handleUpdateLead(lead.leads_id, { status: newStatus })
+    } catch (error) {
+      console.error('Error moving lead to next stage:', error)
+      setError('Failed to move lead to next stage')
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -305,7 +333,12 @@ export default function LeadsPage() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 pb-20 sm:pb-6">
+        <main 
+          className="flex-1 p-4 sm:p-6 sm:pb-6"
+          style={{
+            paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))'
+          }}
+        >
           {/* Error Message */}
           {error && (
             <div className="mb-6 bg-red-900/20 border border-red-500/30 rounded-lg p-4">
@@ -338,12 +371,21 @@ export default function LeadsPage() {
             </div>
           </div>
 
-          {/* Drag Instruction */}
-          <div className="mb-4 flex items-center justify-center text-gray-400 text-sm">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-            </svg>
-            <span>Drag lead cards between stages to update their status</span>
+          {/* Instructions */}
+          <div className="mb-4 flex flex-col sm:flex-row items-center justify-center text-gray-400 text-sm space-y-2 sm:space-y-0 sm:space-x-4">
+            <div className="flex items-center">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+              </svg>
+              <span className="hidden sm:inline">Drag lead cards between stages to update their status</span>
+              <span className="sm:hidden">Tap sections to expand/collapse</span>
+            </div>
+            <div className="flex items-center text-xs">
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+              <span>Use arrow buttons on mobile to move leads forward</span>
+            </div>
           </div>
 
           {/* Pipeline Board */}
@@ -359,44 +401,75 @@ export default function LeadsPage() {
                   onDrop={(e) => handleDrop(e, stage.key as Lead['status'])}
                 >
                   {/* Stage Header */}
-                  <div className="flex items-center justify-between mb-4">
+                  <div 
+                    className="flex items-center justify-between mb-4 cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors"
+                    onClick={() => toggleStage(stage.key)}
+                  >
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${stage.color}`}></div>
                       <h3 className="text-lg font-semibold text-white">{stage.label}</h3>
                     </div>
-                    <span className="bg-white/10 text-white text-xs px-2 py-1 rounded-full">
-                      {stageLeads.length}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="bg-white/10 text-white text-xs px-2 py-1 rounded-full">
+                        {stageLeads.length}
+                      </span>
+                      <svg 
+                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                          collapsedStages.has(stage.key) ? 'rotate-180' : ''
+                        }`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
 
                   {/* Stage Content */}
-                  <div className="space-y-3">
-                    {isLoadingLeads ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                      </div>
-                    ) : stageLeads.length === 0 ? (
-                      <div className="text-center py-8">
-                        <div className="w-12 h-12 mx-auto mb-3 bg-white/10 rounded-full flex items-center justify-center">
-                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
+                  {!collapsedStages.has(stage.key) && (
+                    <div className="space-y-3">
+                      {isLoadingLeads ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
                         </div>
-                        <p className="text-gray-400 text-sm">No leads in this stage</p>
-                      </div>
-                    ) : (
-                      stageLeads.map((lead) => (
-                        <LeadCard
-                          key={lead.leads_id}
-                          lead={lead}
-                          onUpdateLead={handleUpdateLead}
-                          onDeleteLead={handleDeleteLead}
-                          onConvertToMember={handleConvertToMember}
-                          onDragStart={(e) => handleDragStart(e, lead)}
-                        />
-                      ))
-                    )}
-                  </div>
+                      ) : stageLeads.length === 0 ? (
+                        <div className="text-center py-8">
+                          <div className="w-12 h-12 mx-auto mb-3 bg-white/10 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-sm">No leads in this stage</p>
+                        </div>
+                      ) : (
+                        stageLeads.map((lead) => (
+                          <div key={lead.leads_id} className="relative">
+                            <LeadCard
+                              lead={lead}
+                              onUpdateLead={handleUpdateLead}
+                              onDeleteLead={handleDeleteLead}
+                              onConvertToMember={handleConvertToMember}
+                              onDragStart={(e) => handleDragStart(e, lead)}
+                            />
+                            {/* Mobile Action Button */}
+                            <div className="sm:hidden absolute top-2 right-2">
+                              <button
+                                onClick={() => moveLeadToNextStage(lead)}
+                                disabled={PIPELINE_STAGES.findIndex(s => s.key === lead.status) >= PIPELINE_STAGES.length - 1}
+                                className="w-8 h-8 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                                title="Move to next stage"
+                              >
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}

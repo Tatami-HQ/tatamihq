@@ -53,7 +53,15 @@ export default function MobileBottomNav() {
   ]
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-md border-t border-white/10 z-50 sm:hidden">
+    <div 
+      className="fixed left-0 right-0 bg-black/95 backdrop-blur-md border-t border-white/10 z-50 sm:hidden"
+      style={{
+        bottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)',
+        position: 'fixed',
+        willChange: 'bottom, padding-bottom'
+      }}
+    >
       <div className="flex items-center justify-around py-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href

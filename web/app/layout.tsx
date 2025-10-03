@@ -29,7 +29,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
         style={{ 
           WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'none'
+          overscrollBehavior: 'none',
+          minHeight: '100dvh' // Dynamic viewport height for iOS
         }}
       >
         {children}
