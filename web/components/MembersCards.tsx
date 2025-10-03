@@ -110,14 +110,14 @@ export default function MembersCards({
             onClick={() => setSelectedMember(member)}
           >
             {/* Card Layout */}
-            <div className="flex items-center space-x-4 mb-4">
-              {/* Profile Picture - Left Side */}
-              <div className="flex-shrink-0">
+            <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-3 md:mb-4">
+              {/* Profile Picture - Top on mobile, Left on desktop */}
+              <div className="flex justify-center md:justify-start mb-3 md:mb-0">
                 {member.profile_picture_url ? (
                   <img
                     src={member.profile_picture_url}
                     alt={`${member.first_name} ${member.last_name}`}
-                    className="w-20 h-20 rounded-full object-cover border-2 border-white/20"
+                    className="w-12 h-12 md:w-20 md:h-20 rounded-full object-cover border-2 border-white/20"
                     onError={(e) => {
                       // Fallback to avatar if image fails to load
                       e.currentTarget.style.display = 'none'
@@ -125,16 +125,16 @@ export default function MembersCards({
                     }}
                   />
                 ) : null}
-                <div className={`w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-2xl ${member.profile_picture_url ? 'hidden' : ''}`}>
+                <div className={`w-12 h-12 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg md:text-2xl ${member.profile_picture_url ? 'hidden' : ''}`}>
                   {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
                 </div>
               </div>
               
-              {/* Content - Right Side */}
-              <div className="flex-1 min-w-0">
+              {/* Content */}
+              <div className="flex-1 min-w-0 text-center md:text-left">
                 {/* Name and Status Row */}
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors duration-200 truncate">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2 space-y-1 md:space-y-0">
+                  <h3 className="text-sm md:text-lg font-semibold text-white group-hover:text-blue-400 transition-colors duration-200 truncate">
                     {member.first_name} {member.last_name}
                   </h3>
                   <button
@@ -142,7 +142,7 @@ export default function MembersCards({
                       e.stopPropagation()
                       handleStatusToggle(member)
                     }}
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-all duration-200 hover:scale-105 ${statusColors[member.status]} flex-shrink-0 cursor-pointer`}
+                    className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-medium border transition-all duration-200 hover:scale-105 ${statusColors[member.status]} cursor-pointer`}
                     title={`Click to ${member.status === 'Active' ? 'deactivate' : 'activate'} member`}
                   >
                     {member.status}
@@ -150,34 +150,38 @@ export default function MembersCards({
                 </div>
                 
                 {/* Email */}
-                <p className="text-sm text-gray-400 truncate mb-3">{member.email_address}</p>
+                <p className="text-xs md:text-sm text-gray-400 truncate">{member.email_address}</p>
               </div>
             </div>
 
-            {/* Member Info - Clean Layout */}
-            <div className="space-y-2 mb-4">
-              {member.phone && (
-                <div className="text-sm text-gray-300 truncate">
-                  {member.phone}
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between text-sm">
+            {/* Member Info - Compact Layout */}
+            <div className="space-y-1 md:space-y-2">
+              {/* Phone and Age Row */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between text-xs md:text-sm space-y-1 md:space-y-0">
+                {member.phone && (
+                  <span className="text-gray-300 truncate">
+                    {member.phone}
+                  </span>
+                )}
                 {member.date_of_birth && (
                   <span className="text-gray-400">
                     Age {calculateAge(member.date_of_birth)}
                   </span>
                 )}
-                {member.membership_type && (
-                  <span className="text-blue-400 font-medium">
+              </div>
+              
+              {/* Membership Type */}
+              {member.membership_type && (
+                <div className="text-center md:text-left">
+                  <span className="text-blue-400 font-medium text-xs md:text-sm">
                     {member.membership_type}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* License Expiry Warning */}
               {(isLicenseExpired(member.licence_expire_date) || isLicenseExpiringSoon(member.licence_expire_date)) && (
-                <div className={`flex items-center text-xs px-2 py-1 rounded-full ${
+                <div className={`flex items-center justify-center md:justify-start text-xs px-2 py-1 rounded-full ${
                   isLicenseExpired(member.licence_expire_date) 
                     ? 'bg-red-900/20 text-red-400 border border-red-500/30' 
                     : 'bg-orange-900/20 text-orange-400 border border-orange-500/30'
