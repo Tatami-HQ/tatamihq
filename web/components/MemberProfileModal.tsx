@@ -356,8 +356,8 @@ export default function MemberProfileModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-gray-900 rounded-none sm:rounded-lg shadow-xl max-w-4xl w-full h-full sm:max-h-[90vh] sm:h-auto flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300">
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-0 animate-in fade-in duration-200">
+      <div className="bg-gray-900 rounded-none shadow-xl w-full h-full flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
           <div className="flex items-center space-x-4">
