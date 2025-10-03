@@ -119,14 +119,17 @@ export default function MembersCards({
                     alt={`${member.first_name} ${member.last_name}`}
                     className="w-12 h-12 md:w-20 md:h-20 rounded-full object-cover border-2 border-white/20"
                     onError={(e) => {
-                      // Fallback to avatar if image fails to load
+                      // Fallback to TATAMIHQ logo if image fails to load
                       e.currentTarget.style.display = 'none'
                       e.currentTarget.nextElementSibling?.classList.remove('hidden')
                     }}
                   />
                 ) : null}
-                <div className={`w-12 h-12 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg md:text-2xl ${member.profile_picture_url ? 'hidden' : ''}`}>
-                  {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
+                <div className={`w-12 h-12 md:w-20 md:h-20 rounded-full bg-black border-2 border-white/20 flex items-center justify-center ${member.profile_picture_url ? 'hidden' : ''}`}>
+                  <div className="font-bold font-sans uppercase tracking-wide text-white md:text-blue-500">
+                    <span className="text-white text-xs md:text-sm">TATAMI</span>
+                    <span className="text-blue-500 text-xs md:text-sm">HQ</span>
+                  </div>
                 </div>
               </div>
               
@@ -142,10 +145,15 @@ export default function MembersCards({
                       e.stopPropagation()
                       handleStatusToggle(member)
                     }}
-                    className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-medium border transition-all duration-200 hover:scale-105 ${statusColors[member.status]} cursor-pointer`}
+                    className={`inline-flex items-center justify-center px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-xs font-medium border transition-all duration-200 hover:scale-105 ${statusColors[member.status]} cursor-pointer`}
                     title={`Click to ${member.status === 'Active' ? 'deactivate' : 'activate'} member`}
                   >
-                    {member.status}
+                    {member.status === 'Active' ? (
+                      <span className="md:hidden">•</span>
+                    ) : (
+                      member.status
+                    )}
+                    <span className="hidden md:inline">{member.status}</span>
                   </button>
                 </div>
                 
