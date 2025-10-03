@@ -430,6 +430,34 @@ export default function MemberProfileModal({
           </div>
         </div>
 
+        {/* Member Status Toggle - Above Navbar */}
+        <div className="px-4 sm:px-6 py-4 border-b border-white/10">
+          <div className="flex items-center justify-center space-x-4">
+            <span className="text-sm text-gray-400">Member Status:</span>
+            <button
+              onClick={() => {
+                const newStatus = (editForm.status || member.status) === 'Active' ? 'Inactive' : 'Active'
+                handleFieldChange('status', newStatus)
+                handleFieldBlur('status', newStatus)
+              }}
+              className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                (editForm.status || member.status) === 'Active' ? 'bg-green-600' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-200 ${
+                  (editForm.status || member.status) === 'Active' ? 'translate-x-9' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`text-sm font-medium ${
+              (editForm.status || member.status) === 'Active' ? 'text-green-400' : 'text-gray-400'
+            }`}>
+              {(editForm.status || member.status) === 'Active' ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+        </div>
+
         {/* Tab Navigation */}
         <div className="border-b border-white/10">
           <nav className="flex space-x-4 sm:space-x-8 px-4 sm:px-6 overflow-x-auto scrollbar-hide">
@@ -606,39 +634,6 @@ export default function MemberProfileModal({
                   </div>
                 </div>
               )}
-
-              {/* Member Status Toggle */}
-              <div className="mb-6 flex justify-center">
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-400">Member Status:</span>
-                    <button
-                      onClick={() => {
-                        const newStatus = (editForm.status || member.status) === 'Active' ? 'Inactive' : 'Active'
-                        handleFieldChange('status', newStatus)
-                        handleFieldBlur('status', newStatus)
-                      }}
-                      className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                        (editForm.status || member.status) === 'Active' ? 'bg-green-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-200 ${
-                          (editForm.status || member.status) === 'Active' ? 'translate-x-9' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                    <span className={`text-sm font-medium ${
-                      (editForm.status || member.status) === 'Active' ? 'text-green-400' : 'text-gray-400'
-                    }`}>
-                      {(editForm.status || member.status) === 'Active' ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Inactive members are kept in the database but hidden from the members list
-                  </p>
-                </div>
-              </div>
 
               {/* Personal Information */}
               <div className="space-y-4">
