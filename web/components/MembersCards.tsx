@@ -134,26 +134,22 @@ export default function MembersCards({
               </div>
               
               {/* Content */}
-              <div className="flex-1 min-w-0 text-center md:text-left">
+              <div className="flex-1 min-w-0 text-center">
                 {/* Name and Status Row */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2 space-y-1 md:space-y-0">
+                <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between mb-2 space-y-1 md:space-y-0">
                   <h3 className="text-sm md:text-lg font-semibold text-white group-hover:text-blue-400 transition-colors duration-200 truncate">
                     {member.first_name} {member.last_name}
                   </h3>
+                  {/* Status button - hidden on mobile, shown on desktop */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       handleStatusToggle(member)
                     }}
-                    className={`inline-flex items-center justify-center px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-xs font-medium border transition-all duration-200 hover:scale-105 ${statusColors[member.status]} cursor-pointer`}
+                    className={`hidden md:inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-medium border transition-all duration-200 hover:scale-105 ${statusColors[member.status]} cursor-pointer`}
                     title={`Click to ${member.status === 'Active' ? 'deactivate' : 'activate'} member`}
                   >
-                    {member.status === 'Active' ? (
-                      <span className="md:hidden">•</span>
-                    ) : (
-                      member.status
-                    )}
-                    <span className="hidden md:inline">{member.status}</span>
+                    {member.status}
                   </button>
                 </div>
                 
@@ -165,11 +161,15 @@ export default function MembersCards({
             {/* Member Info - Compact Layout */}
             <div className="space-y-1 md:space-y-2">
               {/* Phone and Age Row */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between text-xs md:text-sm space-y-1 md:space-y-0">
+              <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between text-xs md:text-sm space-y-1 md:space-y-0">
                 {member.phone && (
-                  <span className="text-gray-300 truncate">
+                  <a 
+                    href={`tel:${member.phone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-blue-400 hover:text-blue-300 truncate transition-colors duration-200"
+                  >
                     {member.phone}
-                  </span>
+                  </a>
                 )}
                 {member.date_of_birth && (
                   <span className="text-gray-400">
@@ -180,7 +180,7 @@ export default function MembersCards({
               
               {/* Membership Type */}
               {member.membership_type && (
-                <div className="text-center md:text-left">
+                <div className="text-center">
                   <span className="text-blue-400 font-medium text-xs md:text-sm">
                     {member.membership_type}
                   </span>
@@ -189,7 +189,7 @@ export default function MembersCards({
 
               {/* License Expiry Warning */}
               {(isLicenseExpired(member.licence_expire_date) || isLicenseExpiringSoon(member.licence_expire_date)) && (
-                <div className={`flex items-center justify-center md:justify-start text-xs px-2 py-1 rounded-full ${
+                <div className={`flex items-center justify-center text-xs px-2 py-1 rounded-full ${
                   isLicenseExpired(member.licence_expire_date) 
                     ? 'bg-red-900/20 text-red-400 border border-red-500/30' 
                     : 'bg-orange-900/20 text-orange-400 border border-orange-500/30'

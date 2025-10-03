@@ -42,6 +42,7 @@ export default function LeadsPage() {
   const [error, setError] = useState('')
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null)
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set(['new', 'contacted', 'booked', 'attended_trial']))
+  const [searchQuery, setSearchQuery] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -267,7 +268,21 @@ export default function LeadsPage() {
   }
 
   const getLeadsByStatus = (status: Lead['status']) => {
-    return leads.filter(lead => lead.status === status)
+    const statusLeads = leads.filter(lead => lead.status === status)
+    
+    // Filter by search query if one exists
+    if (searchQuery.trim()) {
+      return statusLeads.filter(lead => {
+        const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.toLowerCase()
+        const email = lead.email?.toLowerCase() || ''
+        const phone = lead.phone?.toLowerCase() || ''
+        const query = searchQuery.toLowerCase()
+        
+        return fullName.includes(query) || email.includes(query) || phone.includes(query)
+      })
+    }
+    
+    return statusLeads
   }
 
   const toggleStage = (stageKey: string) => {
@@ -371,6 +386,34 @@ export default function LeadsPage() {
             </div>
           </div>
 
+          {/* Search Field */}
+          <div className="mb-4">
+            <div className="relative max-w-md mx-auto">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Search leads by name, email, or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-white/20 rounded-lg bg-white/5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Instructions */}
           <div className="mb-4 flex flex-col sm:flex-row items-center justify-center text-gray-400 text-sm space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="flex items-center">
@@ -389,20 +432,24 @@ export default function LeadsPage() {
           </div>
 
           {/* Pipeline Board */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 xl:grid-cols-4 md:gap-6">
             {PIPELINE_STAGES.map((stage) => {
               const stageLeads = getLeadsByStatus(stage.key as Lead['status'])
               
               return (
                 <div
                   key={stage.key}
-                  className="bg-white/5 border border-white/10 rounded-lg p-4 min-h-[700px] max-h-[80vh] overflow-y-auto"
+                  className={`bg-white/5 border border-white/10 rounded-lg transition-all duration-300 ${
+                    collapsedStages.has(stage.key) 
+                      ? 'md:min-h-[700px] md:max-h-[80vh] md:overflow-y-auto' 
+                      : 'md:min-h-[700px] md:max-h-[80vh] md:overflow-y-auto'
+                  }`}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, stage.key as Lead['status'])}
                 >
-                  {/* Stage Header */}
+                  {/* Stage Header - Always visible */}
                   <div 
-                    className="flex items-center justify-between mb-4 cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors"
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
                     onClick={() => toggleStage(stage.key)}
                   >
                     <div className="flex items-center space-x-2">
@@ -426,9 +473,13 @@ export default function LeadsPage() {
                     </div>
                   </div>
 
-                  {/* Stage Content */}
-                  {!collapsedStages.has(stage.key) && (
-                    <div className="space-y-3">
+                  {/* Stage Content - Collapsible */}
+                  <div className={`transition-all duration-300 overflow-hidden ${
+                    collapsedStages.has(stage.key) 
+                      ? 'max-h-0 opacity-0' 
+                      : 'max-h-[1000px] opacity-100'
+                  }`}>
+                    <div className="px-4 pb-4 space-y-3">
                       {isLoadingLeads ? (
                         <div className="flex items-center justify-center py-8">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
@@ -469,7 +520,7 @@ export default function LeadsPage() {
                         ))
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
               )
             })}
