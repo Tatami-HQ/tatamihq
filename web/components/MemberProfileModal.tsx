@@ -413,9 +413,9 @@ export default function MemberProfileModal({
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-400">Status:</span>
-              <button
+            <button
                 onClick={() => {
                   const newStatus = (editForm.status || member.status) === 'Active' ? 'Inactive' : 'Active'
                   handleFieldChange('status', newStatus)
@@ -430,7 +430,7 @@ export default function MemberProfileModal({
                     (editForm.status || member.status) === 'Active' ? 'translate-x-7' : 'translate-x-1'
                   }`}
                 />
-              </button>
+            </button>
               <span className={`text-sm font-medium ${
                 (editForm.status || member.status) === 'Active' ? 'text-green-400' : 'text-gray-400'
               }`}>
@@ -526,23 +526,23 @@ export default function MemberProfileModal({
                     onClick={() => setShowImageOptions(true)}
                     className="group relative cursor-pointer transition-transform duration-200 hover:scale-105"
                   >
-                    {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        alt="Profile preview"
+                      {imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="Profile preview"
                         className="w-24 h-24 rounded-full object-cover border-4 border-white/20 shadow-lg"
-                      />
-                    ) : member.profile_picture_url ? (
-                      <img
-                        src={member.profile_picture_url}
-                        alt={`${member.first_name} ${member.last_name}`}
+                        />
+                      ) : member.profile_picture_url ? (
+                        <img
+                          src={member.profile_picture_url}
+                          alt={`${member.first_name} ${member.last_name}`}
                         className="w-24 h-24 rounded-full object-cover border-4 border-white/20 shadow-lg"
-                      />
-                    ) : (
+                        />
+                      ) : (
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-3xl shadow-lg">
-                        {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
-                      </div>
-                    )}
+                          {member.first_name?.[0]?.toUpperCase()}{member.last_name?.[0]?.toUpperCase()}
+                        </div>
+                      )}
                     {/* Overlay on hover */}
                     <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -597,19 +597,19 @@ export default function MemberProfileModal({
                       )}
                       
                       <label className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2 cursor-pointer">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         <span>Upload from Gallery</span>
-                      </label>
+                        </label>
                       
-                      <button
+                          <button
                         onClick={handleTakePicture}
                         className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
                       >
@@ -618,19 +618,19 @@ export default function MemberProfileModal({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         <span>Take Picture</span>
-                      </button>
+                          </button>
                       
-                      <button
+                          <button
                         onClick={() => setShowImageOptions(false)}
                         className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200"
-                      >
+                          >
                         Cancel
-                      </button>
+                          </button>
                     </div>
                   </div>
                 </div>
               )}
-
+                
               {/* Personal Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Personal Information</h3>
@@ -655,7 +655,7 @@ export default function MemberProfileModal({
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                </div>
+                  </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm text-gray-400">Date of Birth</span>
@@ -761,27 +761,27 @@ export default function MemberProfileModal({
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
+                  <div>
                       <span className="text-sm text-gray-400">City</span>
-                      <input
-                        type="text"
-                        value={editForm.city || member.city || ''}
-                        onChange={(e) => handleFieldChange('city', e.target.value)}
-                        onBlur={(e) => handleFieldBlur('city', e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    <input
+                      type="text"
+                      value={editForm.city || member.city || ''}
+                      onChange={(e) => handleFieldChange('city', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('city', e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="City"
-                      />
-                    </div>
-                    <div>
+                    />
+                  </div>
+                  <div>
                       <span className="text-sm text-gray-400">Postcode</span>
-                      <input
-                        type="text"
-                        value={editForm.postcode || member.postcode || ''}
-                        onChange={(e) => handleFieldChange('postcode', e.target.value)}
-                        onBlur={(e) => handleFieldBlur('postcode', e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    <input
+                      type="text"
+                      value={editForm.postcode || member.postcode || ''}
+                      onChange={(e) => handleFieldChange('postcode', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('postcode', e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Postcode"
-                      />
+                    />
                     </div>
                   </div>
                 </div>
@@ -820,27 +820,27 @@ export default function MemberProfileModal({
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-white mb-4">Additional Information</h3>
                 <div className="space-y-4">
-                  <div>
+                <div>
                     <span className="text-sm text-gray-400 mb-2 block">Medical Information</span>
-                    <textarea
-                      value={editForm.medical_info || member.medical_info || ''}
-                      onChange={(e) => handleFieldChange('medical_info', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('medical_info', e.target.value)}
-                      rows={3}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                      placeholder="Any medical conditions, allergies, or important health information..."
-                    />
-                  </div>
-                  <div>
+                  <textarea
+                    value={editForm.medical_info || member.medical_info || ''}
+                    onChange={(e) => handleFieldChange('medical_info', e.target.value)}
+                    onBlur={(e) => handleFieldBlur('medical_info', e.target.value)}
+                    rows={3}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder="Any medical conditions, allergies, or important health information..."
+                  />
+                </div>
+                <div>
                     <span className="text-sm text-gray-400 mb-2 block">Notes</span>
-                    <textarea
-                      value={editForm.notes || member.notes || ''}
-                      onChange={(e) => handleFieldChange('notes', e.target.value)}
-                      onBlur={(e) => handleFieldBlur('notes', e.target.value)}
-                      rows={3}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                      placeholder="Any additional notes about this member..."
-                    />
+                  <textarea
+                    value={editForm.notes || member.notes || ''}
+                    onChange={(e) => handleFieldChange('notes', e.target.value)}
+                    onBlur={(e) => handleFieldBlur('notes', e.target.value)}
+                    rows={3}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder="Any additional notes about this member..."
+                  />
                   </div>
                 </div>
               </div>
@@ -984,9 +984,9 @@ export default function MemberProfileModal({
                     </div>
                   ) : memberBelts.length === 0 ? (
                     <div className="text-center py-8">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                         </svg>
                       </div>
                       <p className="text-gray-400">No belts recorded yet</p>
@@ -1020,7 +1020,7 @@ export default function MemberProfileModal({
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
+                  </svg>
                             </button>
                           </div>
                         </div>
