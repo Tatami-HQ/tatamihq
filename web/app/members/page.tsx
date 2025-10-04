@@ -106,8 +106,8 @@ export default function MembersPage() {
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue: any
-      let bValue: any
+      let aValue: string | number
+      let bValue: string | number
 
       switch (sortField) {
         case 'name':
@@ -119,8 +119,8 @@ export default function MembersPage() {
           bValue = (b.email_address || '').toLowerCase()
           break
         case 'join_date':
-          aValue = new Date(a.join_date || '1900-01-01')
-          bValue = new Date(b.join_date || '1900-01-01')
+          aValue = new Date(a.join_date || '1900-01-01').getTime()
+          bValue = new Date(b.join_date || '1900-01-01').getTime()
           break
         case 'status':
           aValue = a.status || ''

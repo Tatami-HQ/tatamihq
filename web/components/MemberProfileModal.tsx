@@ -133,6 +133,13 @@ export default function MemberProfileModal({
   const [competitionTeams, setCompetitionTeams] = useState<CompetitionTeam[]>([])
   const [isLoadingCompetitions, setIsLoadingCompetitions] = useState(false)
   
+  // Filter states
+  const [selectedYear, setSelectedYear] = useState<string>('all')
+  const [selectedMartialArt, setSelectedMartialArt] = useState<string>('all')
+  const [selectedOrganisation, setSelectedOrganisation] = useState<string>('all')
+  const [selectedCompetitionType, setSelectedCompetitionType] = useState<string>('all')
+  const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false)
+  
   // Form state for new belt
   const [newBeltForm, setNewBeltForm] = useState({
     martial_art_id: '',
@@ -293,6 +300,55 @@ export default function MemberProfileModal({
         }
       }
 
+      // Fetch team competitions where this member participated
+      const { data: teamMembers, error: teamMembersError } = await supabase
+        .from('competition_team_members')
+        .select(`
+          *,
+          competition_teams:competition_teams_id (
+            *,
+            competitions:competitions_id (
+              competitions_id,
+              Name,
+              date_start,
+              date_end,
+              location,
+              competition_profile_picture
+            ),
+            competition_disciplines:competition_disciplines_id (
+              competition_disciplines_id,
+              name,
+              team_event
+            )
+          )
+        `)
+        .eq('member_id', member.members_id)
+
+      if (teamMembersError) {
+        console.error('Error fetching team memberships:', teamMembersError)
+      } else {
+        // Extract team data and flatten the structure
+        const teamData = teamMembers?.map(tm => tm.competition_teams).filter(Boolean) || []
+        setCompetitionTeams(teamData)
+        
+        // Also fetch team bouts for these teams
+        if (teamData.length > 0) {
+          const teamIds = teamData.map(t => t.competition_teams_id).filter((id): id is number => id !== null)
+          
+          const { data: teamBouts, error: teamBoutsError } = await supabase
+            .from('competition_bouts')
+            .select('*')
+            .in('competition_teams_id', teamIds)
+
+          if (teamBoutsError) {
+            console.error('Error fetching team bouts:', teamBoutsError)
+          } else {
+            // Add team bouts to the existing bouts array
+            setCompetitionBouts(prevBouts => [...prevBouts, ...(teamBouts || [])])
+          }
+        }
+      }
+
     } catch (error) {
       console.error('Error fetching competition data:', error)
     } finally {
@@ -300,21 +356,99 @@ export default function MemberProfileModal({
     }
   }
 
+  // Filter functions
+  const getFilteredData = () => {
+    let filteredEntries = [...competitionEntries]
+    let filteredBouts = [...competitionBouts]
+    let filteredResults = [...competitionResults]
+    let filteredTeams = [...competitionTeams]
+
+    // Year filter
+    if (selectedYear !== 'all') {
+      filteredEntries = filteredEntries.filter(entry => {
+        const year = new Date(entry.competition?.date_start || '').getFullYear().toString()
+        return year === selectedYear
+      })
+      
+      filteredTeams = filteredTeams.filter(team => {
+        const year = new Date(team.competition?.date_start || '').getFullYear().toString()
+        return year === selectedYear
+      })
+    }
+
+    // Martial Art filter (based on discipline)
+    if (selectedMartialArt !== 'all') {
+      filteredEntries = filteredEntries.filter(entry => 
+        entry.discipline?.name === selectedMartialArt
+      )
+      
+      filteredTeams = filteredTeams.filter(team => 
+        team.discipline?.name === selectedMartialArt
+      )
+    }
+
+    // Competition Type filter (individual vs team)
+    if (selectedCompetitionType !== 'all') {
+      if (selectedCompetitionType === 'individual') {
+        filteredEntries = filteredEntries.filter(entry => !entry.discipline?.team_event)
+        filteredTeams = [] // Exclude team competitions
+      } else if (selectedCompetitionType === 'team') {
+        filteredEntries = filteredEntries.filter(entry => entry.discipline?.team_event)
+        // Keep filteredTeams as is for team competitions
+      }
+    }
+
+    // Update filtered bouts and results based on filtered entries and teams
+    const filteredEntryIds = filteredEntries.map(e => e.competition_entries_id).filter((id): id is number => id !== null)
+    const filteredTeamIds = filteredTeams.map(t => t.competition_teams_id).filter((id): id is number => id !== null)
+    
+    filteredBouts = filteredBouts.filter(bout => 
+      (bout.competition_entries_id !== null && filteredEntryIds.includes(bout.competition_entries_id)) ||
+      (bout.competition_teams_id !== null && filteredTeamIds.includes(bout.competition_teams_id))
+    )
+    
+    filteredResults = filteredResults.filter(result => 
+      result.competition_entries_id !== null && filteredEntryIds.includes(result.competition_entries_id)
+    )
+
+    return { filteredEntries, filteredBouts, filteredResults, filteredTeams }
+  }
+
   // Analytics calculation functions
   const getCompetitionStats = () => {
-    const totalCompetitions = competitionEntries.length
-    const totalBouts = competitionBouts.length
-    const wins = competitionBouts.filter(bout => bout.result === 'Win').length
-    const losses = competitionBouts.filter(bout => bout.result === 'Loss').length
+    const { filteredEntries, filteredBouts, filteredResults, filteredTeams } = getFilteredData()
+    
+    // Total competitions = individual entries + team entries
+    const totalCompetitions = filteredEntries.length + filteredTeams.length
+    const totalBouts = filteredBouts.length
+    const wins = filteredBouts.filter(bout => bout.result === 'Win').length
+    const losses = filteredBouts.filter(bout => bout.result === 'Loss').length
     const winRate = totalBouts > 0 ? Math.round((wins / totalBouts) * 100) : 0
 
+    // Count medals from both individual results and team results
+    const individualMedals = {
+      gold: filteredResults.filter(r => r.medal === 'Gold').length,
+      silver: filteredResults.filter(r => r.medal === 'Silver').length,
+      bronze: filteredResults.filter(r => r.medal === 'Bronze').length
+    }
+
+    const teamMedals = {
+      gold: filteredTeams.filter(t => t.medal === 'Gold').length,
+      silver: filteredTeams.filter(t => t.medal === 'Silver').length,
+      bronze: filteredTeams.filter(t => t.medal === 'Bronze').length
+    }
+
     const medals = {
-      gold: competitionResults.filter(r => r.medal === 'Gold').length,
-      silver: competitionResults.filter(r => r.medal === 'Silver').length,
-      bronze: competitionResults.filter(r => r.medal === 'Bronze').length
+      gold: individualMedals.gold + teamMedals.gold,
+      silver: individualMedals.silver + teamMedals.silver,
+      bronze: individualMedals.bronze + teamMedals.bronze
     }
 
     const totalMedals = medals.gold + medals.silver + medals.bronze
+
+    // Calculate points scored vs conceded
+    const totalPointsFor = filteredBouts.reduce((sum, bout) => sum + (bout.score_for || 0), 0)
+    const totalPointsAgainst = filteredBouts.reduce((sum, bout) => sum + (bout.score_against || 0), 0)
 
     return {
       totalCompetitions,
@@ -323,7 +457,10 @@ export default function MemberProfileModal({
       losses,
       winRate,
       medals,
-      totalMedals
+      totalMedals,
+      totalPointsFor,
+      totalPointsAgainst,
+      pointsDifference: totalPointsFor - totalPointsAgainst
     }
   }
 
@@ -337,6 +474,7 @@ export default function MemberProfileModal({
       medals: { gold: number, silver: number, bronze: number }
     }>()
 
+    // Add individual competition entries
     competitionEntries.forEach(entry => {
       const disciplineName = entry.discipline?.name || 'Unknown'
       if (!disciplineMap.has(disciplineName)) {
@@ -352,19 +490,50 @@ export default function MemberProfileModal({
       disciplineMap.get(disciplineName)!.competitions++
     })
 
+    // Add team competition entries
+    competitionTeams.forEach(team => {
+      const disciplineName = team.discipline?.name || 'Unknown'
+      if (!disciplineMap.has(disciplineName)) {
+        disciplineMap.set(disciplineName, {
+          name: disciplineName,
+          competitions: 0,
+          bouts: 0,
+          wins: 0,
+          losses: 0,
+          medals: { gold: 0, silver: 0, bronze: 0 }
+        })
+      }
+      disciplineMap.get(disciplineName)!.competitions++
+    })
+
+    // Process individual bouts
     competitionBouts.forEach(bout => {
-      const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
-      if (entry) {
-        const disciplineName = entry.discipline?.name || 'Unknown'
-        const disciplineStats = disciplineMap.get(disciplineName)
-        if (disciplineStats) {
-          disciplineStats.bouts++
-          if (bout.result === 'Win') disciplineStats.wins++
-          if (bout.result === 'Loss') disciplineStats.losses++
+      let disciplineName = 'Unknown'
+      
+      // Check if it's an individual bout
+      if (bout.competition_entries_id) {
+        const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
+        if (entry) {
+          disciplineName = entry.discipline?.name || 'Unknown'
         }
+      }
+      // Check if it's a team bout
+      else if (bout.competition_teams_id) {
+        const team = competitionTeams.find(t => t.competition_teams_id === bout.competition_teams_id)
+        if (team) {
+          disciplineName = team.discipline?.name || 'Unknown'
+        }
+      }
+
+      const disciplineStats = disciplineMap.get(disciplineName)
+      if (disciplineStats) {
+        disciplineStats.bouts++
+        if (bout.result === 'Win') disciplineStats.wins++
+        if (bout.result === 'Loss') disciplineStats.losses++
       }
     })
 
+    // Process individual results
     competitionResults.forEach(result => {
       const entry = competitionEntries.find(e => e.competition_entries_id === result.competition_entries_id)
       if (entry && result.medal) {
@@ -378,19 +547,232 @@ export default function MemberProfileModal({
       }
     })
 
+    // Process team results (medals from team competitions)
+    competitionTeams.forEach(team => {
+      if (team.medal) {
+        const disciplineName = team.discipline?.name || 'Unknown'
+        const disciplineStats = disciplineMap.get(disciplineName)
+        if (disciplineStats) {
+          if (team.medal === 'Gold') disciplineStats.medals.gold++
+          if (team.medal === 'Silver') disciplineStats.medals.silver++
+          if (team.medal === 'Bronze') disciplineStats.medals.bronze++
+        }
+      }
+    })
+
     return Array.from(disciplineMap.values()).sort((a, b) => b.competitions - a.competitions)
   }
 
   const getRecentCompetitions = () => {
-    return competitionEntries
-      .sort((a, b) => new Date(b.competition?.date_start || '').getTime() - new Date(a.competition?.date_start || '').getTime())
+    // Combine individual and team competitions
+    const allCompetitions = [
+      ...competitionEntries.map(entry => ({
+        ...entry,
+        type: 'individual' as const,
+        competition_date: entry.competition?.date_start
+      })),
+      ...competitionTeams.map(team => ({
+        ...team,
+        type: 'team' as const,
+        competition_date: team.competition?.date_start,
+        // Add team-specific fields for compatibility
+        competition_entries_id: null,
+        competition_disciplines_id: team.competition_disciplines_id
+      }))
+    ]
+    
+    return allCompetitions
+      .sort((a, b) => new Date(b.competition_date || '').getTime() - new Date(a.competition_date || '').getTime())
       .slice(0, 5)
+  }
+
+  const getYearComparison = (year: number) => {
+    const yearEntries = competitionEntries.filter(entry => {
+      const entryYear = entry.competition?.date_start ? new Date(entry.competition.date_start).getFullYear() : null
+      return entryYear === year
+    })
+    
+    const yearBouts = competitionBouts.filter(bout => {
+      const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
+      const entryYear = entry?.competition?.date_start ? new Date(entry.competition.date_start).getFullYear() : null
+      return entryYear === year
+    })
+    
+    const wins = yearBouts.filter(bout => bout.result === 'Win').length
+    const winRate = yearBouts.length > 0 ? Math.round((wins / yearBouts.length) * 100) : 0
+    
+    return {
+      competitions: yearEntries.length,
+      bouts: yearBouts.length,
+      wins,
+      winRate
+    }
+  }
+
+  const calculateCurrentStreak = () => {
+    const sortedBouts = competitionBouts
+      .filter(bout => bout.result === 'Win' || bout.result === 'Loss')
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    
+    if (sortedBouts.length === 0) return 0
+    
+    let streak = 0
+    const firstResult = sortedBouts[0].result
+    
+    for (const bout of sortedBouts) {
+      if (bout.result === firstResult) {
+        streak++
+      } else {
+        break
+      }
+    }
+    
+    return firstResult === 'Win' ? streak : -streak
+  }
+
+  const calculateLongestStreak = () => {
+    const sortedBouts = competitionBouts
+      .filter(bout => bout.result === 'Win' || bout.result === 'Loss')
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    
+    if (sortedBouts.length === 0) return 0
+    
+    let currentStreak = 1
+    let longestWinStreak = 0
+    let longestLossStreak = 0
+    let currentResult = sortedBouts[0].result
+    
+    for (let i = 1; i < sortedBouts.length; i++) {
+      if (sortedBouts[i].result === currentResult) {
+        currentStreak++
+      } else {
+        if (currentResult === 'Win') {
+          longestWinStreak = Math.max(longestWinStreak, currentStreak)
+        } else {
+          longestLossStreak = Math.max(longestLossStreak, currentStreak)
+        }
+        currentStreak = 1
+        currentResult = sortedBouts[i].result
+      }
+    }
+    
+    // Check final streak
+    if (currentResult === 'Win') {
+      longestWinStreak = Math.max(longestWinStreak, currentStreak)
+    } else {
+      longestLossStreak = Math.max(longestLossStreak, currentStreak)
+    }
+    
+    return Math.max(longestWinStreak, longestLossStreak)
   }
 
   const getRecentBouts = () => {
     return competitionBouts
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10)
+  }
+
+  const getYearOnYearPerformance = () => {
+    const { filteredBouts } = getFilteredData()
+    const yearMap = new Map<string, { bouts: number, wins: number, medals: number }>()
+    
+    filteredBouts.forEach(bout => {
+      const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
+      if (entry?.competition?.date_start) {
+        const year = new Date(entry.competition.date_start).getFullYear().toString()
+        if (!yearMap.has(year)) {
+          yearMap.set(year, { bouts: 0, wins: 0, medals: 0 })
+        }
+        const yearData = yearMap.get(year)!
+        yearData.bouts++
+        if (bout.result === 'Win') yearData.wins++
+      }
+    })
+
+    // Add medal data
+    competitionResults.forEach(result => {
+      const entry = competitionEntries.find(e => e.competition_entries_id === result.competition_entries_id)
+      if (entry?.competition?.date_start && result.medal) {
+        const year = new Date(entry.competition.date_start).getFullYear().toString()
+        const yearData = yearMap.get(year)
+        if (yearData) yearData.medals++
+      }
+    })
+
+    return Array.from(yearMap.entries())
+      .map(([year, data]) => ({
+        year,
+        winRate: data.bouts > 0 ? Math.round((data.wins / data.bouts) * 100) : 0,
+        bouts: data.bouts,
+        medals: data.medals
+      }))
+      .sort((a, b) => a.year.localeCompare(b.year))
+  }
+
+  const getMedalsByYear = () => {
+    const yearMap = new Map<string, { gold: number, silver: number, bronze: number }>()
+    
+    competitionResults.forEach(result => {
+      const entry = competitionEntries.find(e => e.competition_entries_id === result.competition_entries_id)
+      if (entry?.competition?.date_start && result.medal) {
+        const year = new Date(entry.competition.date_start).getFullYear().toString()
+        if (!yearMap.has(year)) {
+          yearMap.set(year, { gold: 0, silver: 0, bronze: 0 })
+        }
+        const yearData = yearMap.get(year)!
+        if (result.medal === 'Gold') yearData.gold++
+        if (result.medal === 'Silver') yearData.silver++
+        if (result.medal === 'Bronze') yearData.bronze++
+      }
+    })
+
+    return Array.from(yearMap.entries())
+      .map(([year, medals]) => ({ year, ...medals }))
+      .sort((a, b) => a.year.localeCompare(b.year))
+  }
+
+  const getPerformanceByRound = () => {
+    const { filteredBouts } = getFilteredData()
+    const roundMap = new Map<string, { bouts: number, wins: number }>()
+    
+    filteredBouts.forEach(bout => {
+      const round = bout.round || 'Unknown'
+      if (!roundMap.has(round)) {
+        roundMap.set(round, { bouts: 0, wins: 0 })
+      }
+      const roundData = roundMap.get(round)!
+      roundData.bouts++
+      if (bout.result === 'Win') roundData.wins++
+    })
+
+    return Array.from(roundMap.entries())
+      .map(([round, data]) => ({
+        round,
+        winRate: data.bouts > 0 ? Math.round((data.wins / data.bouts) * 100) : 0,
+        bouts: data.bouts
+      }))
+      .sort((a, b) => b.winRate - a.winRate)
+  }
+
+  const getAvailableYears = () => {
+    const years = new Set<string>()
+    competitionEntries.forEach(entry => {
+      if (entry.competition?.date_start) {
+        const year = new Date(entry.competition.date_start).getFullYear().toString()
+        years.add(year)
+      }
+    })
+    return Array.from(years).sort((a, b) => b.localeCompare(a))
+  }
+
+  const getAvailableMartialArts = () => {
+    const arts = new Set<string>()
+    competitionEntries.forEach(entry => {
+      if (entry.discipline?.name) {
+        arts.add(entry.discipline.name)
+      }
+    })
+    return Array.from(arts).sort()
   }
 
   const handleMartialArtChange = (martialArtId: string) => {
@@ -1116,7 +1498,7 @@ export default function MemberProfileModal({
               {isLoadingCompetitions ? (
                 <div className="text-center py-12">
                   <div className="w-8 h-8 mx-auto mb-4 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-gray-400">Loading competition data...</p>
+                  <p className="text-gray-400">Loading competition analytics...</p>
                 </div>
               ) : competitionEntries.length === 0 ? (
                 <div className="text-center py-12">
@@ -1125,170 +1507,526 @@ export default function MemberProfileModal({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-medium text-white mb-2">Competition History</h3>
+                  <h3 className="text-lg font-medium text-white mb-2">Competition Analytics</h3>
                   <p className="text-gray-400">No competitions recorded yet</p>
-                  <p className="text-sm text-gray-500 mt-2">This section will be populated over time</p>
+                  <p className="text-sm text-gray-500 mt-2">This comprehensive analytics dashboard will be populated over time</p>
                 </div>
               ) : (
                 <>
-                  {/* Overall Stats */}
+                  {/* Header Section */}
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                          Competition Analytics
+                        </h2>
+                        <p className="text-gray-400">{member?.first_name} {member?.last_name}&apos;s Performance Dashboard</p>
+                        <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-white">{getCompetitionStats().totalCompetitions}</div>
+                        <div className="text-sm text-gray-400">Total Events</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 1. Overview Metrics */}
+                  <div className="mb-8">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                      <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      Overview Metrics
+                    </h3>
+                    
                   {(() => {
                     const stats = getCompetitionStats()
+                      const totalScored = competitionBouts.reduce((sum, bout) => sum + (bout.score_for || 0), 0)
+                      const totalConceded = competitionBouts.reduce((sum, bout) => sum + (bout.score_against || 0), 0)
+                      const avgScoreDiff = competitionBouts.length > 0 ? Math.round((totalScored - totalConceded) / competitionBouts.length) : 0
+                      const currentStreak = calculateCurrentStreak()
+                      const longestStreak = calculateLongestStreak()
+                      const uniqueDisciplines = new Set(competitionEntries.map(e => e.discipline?.name)).size
+                      const uniqueOrganisations = new Set(competitionEntries.map(e => e.competition?.location)).size
+                      
                     return (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
-                          <div className="text-2xl font-bold text-blue-400 mb-1">{stats.totalCompetitions}</div>
-                          <div className="text-sm text-gray-400">Competitions</div>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          {/* Competitions */}
+                          <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-lg border border-blue-500/20 rounded-2xl p-6 hover:border-blue-400/40 transition-all duration-300 group">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
+                                <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                </svg>
                         </div>
-                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
-                          <div className="text-2xl font-bold text-green-400 mb-1">{stats.totalBouts}</div>
-                          <div className="text-sm text-gray-400">Total Bouts</div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-white">{stats.totalCompetitions}</div>
+                                <div className="text-xs text-blue-400">Competitions</div>
                         </div>
-                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
-                          <div className="text-2xl font-bold text-yellow-400 mb-1">{stats.winRate}%</div>
-                          <div className="text-sm text-gray-400">Win Rate</div>
                         </div>
-                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
-                          <div className="text-2xl font-bold text-purple-400 mb-1">{stats.totalMedals}</div>
-                          <div className="text-sm text-gray-400">Medals</div>
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-                  {/* Medal Breakdown */}
-                  {(() => {
-                    const stats = getCompetitionStats()
-                    return (
-                      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mb-6">
-                        <h3 className="text-lg font-semibold text-white mb-4">Medal Collection</h3>
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="text-center">
-                            <div className="text-3xl mb-2">🥇</div>
-                            <div className="text-xl font-bold text-yellow-400">{stats.medals.gold}</div>
-                            <div className="text-sm text-gray-400">Gold</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-3xl mb-2">🥈</div>
-                            <div className="text-xl font-bold text-gray-300">{stats.medals.silver}</div>
-                            <div className="text-sm text-gray-400">Silver</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-3xl mb-2">🥉</div>
-                            <div className="text-xl font-bold text-orange-400">{stats.medals.bronze}</div>
-                            <div className="text-sm text-gray-400">Bronze</div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-                  {/* Discipline Breakdown */}
-                  {(() => {
-                    const disciplineStats = getDisciplineStats()
-                    return disciplineStats.length > 0 && (
-                      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mb-6">
-                        <h3 className="text-lg font-semibold text-white mb-4">Performance by Discipline</h3>
-                        <div className="space-y-3">
-                          {disciplineStats.map((discipline, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                              <div className="flex-1">
-                                <div className="font-medium text-white">{discipline.name}</div>
-                                <div className="text-sm text-gray-400">
-                                  {discipline.competitions} competitions • {discipline.bouts} bouts • {discipline.wins}W-{discipline.losses}L
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                {discipline.medals.gold > 0 && <span className="text-yellow-400">🥇{discipline.medals.gold}</span>}
-                                {discipline.medals.silver > 0 && <span className="text-gray-300">🥈{discipline.medals.silver}</span>}
-                                {discipline.medals.bronze > 0 && <span className="text-orange-400">🥉{discipline.medals.bronze}</span>}
-                              </div>
+                            <div className="text-sm text-gray-400">
+                              {uniqueDisciplines} disciplines • {uniqueOrganisations} venues
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })()}
+                          </div>
 
-                  {/* Recent Competitions */}
-                  {(() => {
-                    const recentCompetitions = getRecentCompetitions()
-                    return recentCompetitions.length > 0 && (
-                      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mb-6">
-                        <h3 className="text-lg font-semibold text-white mb-4">Recent Competitions</h3>
-                        <div className="space-y-3">
-                          {recentCompetitions.map((entry, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                              <div className="flex items-center space-x-3">
-                                {entry.competition?.competition_profile_picture ? (
-                                  <img
-                                    src={entry.competition.competition_profile_picture}
-                                    alt={entry.competition.Name || 'Competition'}
-                                    className="w-10 h-10 rounded-lg object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                                    </svg>
-                                  </div>
-                                )}
-                                <div>
-                                  <div className="font-medium text-white">{entry.competition?.Name}</div>
-                                  <div className="text-sm text-gray-400">
-                                    {entry.discipline?.name} • {entry.competition?.date_start && new Date(entry.competition.date_start).toLocaleDateString()}
-                                  </div>
-                                </div>
+                          {/* Medals */}
+                          <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 backdrop-blur-lg border border-yellow-500/20 rounded-2xl p-6 hover:border-yellow-400/40 transition-all duration-300 group">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center group-hover:bg-yellow-500/30 transition-colors">
+                                <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                </svg>
                               </div>
                               <div className="text-right">
-                                <div className="text-sm text-gray-400">
-                                  {competitionBouts.filter(b => b.competition_entries_id === entry.competition_entries_id).length} bouts
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {competitionResults.filter(r => r.competition_entries_id === entry.competition_entries_id && r.medal).length > 0 && 'Medal Winner'}
-                                </div>
+                                <div className="text-2xl font-bold text-white">{stats.medals.gold + stats.medals.silver + stats.medals.bronze}</div>
+                                <div className="text-xs text-yellow-400">Medals</div>
                               </div>
                             </div>
-                          ))}
+                            <div className="flex justify-between text-xs">
+                              <span className="text-yellow-400">🥇{stats.medals.gold}</span>
+                              <span className="text-gray-300">🥈{stats.medals.silver}</span>
+                              <span className="text-orange-400">🥉{stats.medals.bronze}</span>
+                            </div>
+                          </div>
+
+                          {/* Win Rate */}
+                          <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-lg border border-green-500/20 rounded-2xl p-6 hover:border-green-400/40 transition-all duration-300 group">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                </svg>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-white">{stats.winRate}%</div>
+                                <div className="text-xs text-green-400">Win Rate</div>
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-400">
+                              {stats.wins}W - {stats.losses}L • {stats.totalBouts} total bouts
+                            </div>
+                          </div>
+
+                          {/* Points & Streaks */}
+                          <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 backdrop-blur-lg border border-purple-500/20 rounded-2xl p-6 hover:border-purple-400/40 transition-all duration-300 group">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
+                                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                </svg>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-white">{avgScoreDiff > 0 ? '+' : ''}{avgScoreDiff}</div>
+                                <div className="text-xs text-purple-400">Avg Diff</div>
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-400">
+                              Current: {currentStreak} • Best: {longestStreak}
+                            </div>
                         </div>
                       </div>
                     )
                   })()}
+                  </div>
 
-                  {/* Recent Bouts */}
+                  {/* 2. Year-on-Year Performance */}
+                  <div className="mb-8">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                      <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                      </div>
+                      Year-on-Year Performance
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Win Rate Trend */}
+                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-lg border border-green-500/20 rounded-2xl p-6 hover:border-green-400/40 transition-all duration-300">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-semibold text-white">Win Rate Trend</h4>
+                          <select className="bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-white text-sm">
+                            <option>Last 3 years</option>
+                            <option>Last 2 years</option>
+                            <option>This year</option>
+                          </select>
+                        </div>
                   {(() => {
-                    const recentBouts = getRecentBouts()
-                    return recentBouts.length > 0 && (
-                      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
-                        <h3 className="text-lg font-semibold text-white mb-4">Recent Bouts</h3>
-                        <div className="space-y-2">
-                          {recentBouts.map((bout, index) => {
-                            const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
-                            return (
-                              <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                                <div className="flex-1">
-                                  <div className="font-medium text-white">
-                                    vs {bout.opponent_name || 'Unknown Opponent'}
+                          const currentYear = new Date().getFullYear()
+                          const yearData = []
+                          for (let year = currentYear - 2; year <= currentYear; year++) {
+                            const yearStats = getYearComparison(year)
+                            if (yearStats.bouts > 0) {
+                              yearData.push({ year, winRate: yearStats.winRate, bouts: yearStats.bouts, competitions: yearStats.competitions })
+                            }
+                          }
+                          
+                    return (
+                            <div className="space-y-4">
+                              <div className="flex items-end justify-between h-32">
+                                {yearData.map((data, index) => (
+                                  <div key={data.year} className="flex flex-col items-center flex-1">
+                                    <div 
+                                      className="bg-gradient-to-t from-green-500 to-green-400 rounded-t-lg w-8 mb-2 transition-all duration-500 hover:from-green-400 hover:to-green-300 shadow-lg hover:shadow-green-500/25"
+                                      style={{ height: `${Math.max(20, (data.winRate / 100) * 80)}px` }}
+                                    ></div>
+                                    <div className="text-xs text-gray-400">{data.year}</div>
+                                    <div className="text-xs text-green-400 font-medium">{data.winRate}%</div>
+                                    <div className="text-xs text-gray-500">{data.bouts} bouts</div>
+                          </div>
+                                ))}
+                          </div>
+                              <div className="text-center bg-white/5 rounded-lg p-3">
+                                <div className="text-sm text-gray-400">Average: {yearData.length > 0 ? Math.round(yearData.reduce((sum, d) => sum + d.winRate, 0) / yearData.length) : 0}% win rate</div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                      </div>
+
+                      {/* Points Analysis */}
+                      <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-lg border border-blue-500/20 rounded-2xl p-6 hover:border-blue-400/40 transition-all duration-300">
+                        <h4 className="text-lg font-semibold text-white mb-4">Points Analysis</h4>
+                  {(() => {
+                          const totalScored = competitionBouts.reduce((sum, bout) => sum + (bout.score_for || 0), 0)
+                          const totalConceded = competitionBouts.reduce((sum, bout) => sum + (bout.score_against || 0), 0)
+                          const avgScored = competitionBouts.length > 0 ? Math.round(totalScored / competitionBouts.length) : 0
+                          const avgConceded = competitionBouts.length > 0 ? Math.round(totalConceded / competitionBouts.length) : 0
+                          const netPoints = totalScored - totalConceded
+                          
+                          return (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="text-center bg-white/5 rounded-lg p-4">
+                                  <div className="text-2xl font-bold text-green-400">{avgScored}</div>
+                                  <div className="text-sm text-gray-400">Avg Points For</div>
+                                </div>
+                                <div className="text-center bg-white/5 rounded-lg p-4">
+                                  <div className="text-2xl font-bold text-red-400">{avgConceded}</div>
+                                  <div className="text-sm text-gray-400">Avg Points Against</div>
+                                </div>
+                              </div>
+                              
+                        <div className="space-y-3">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-400">Total Points For</span>
+                                  <span className="text-green-400 font-medium">{totalScored}</span>
+                                </div>
+                                <div className="w-full bg-gray-700 rounded-full h-3">
+                                  <div 
+                                    className="bg-gradient-to-r from-green-500 to-green-400 h-3 rounded-full transition-all duration-500 shadow-lg"
+                                    style={{ width: `${Math.min(100, totalScored > 0 ? (totalScored / (totalScored + totalConceded)) * 100 : 0)}%` }}
+                                  ></div>
+                              </div>
+                                
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-400">Total Points Against</span>
+                                  <span className="text-red-400 font-medium">{totalConceded}</span>
+                              </div>
+                                <div className="w-full bg-gray-700 rounded-full h-3">
+                                  <div 
+                                    className="bg-gradient-to-r from-red-500 to-red-400 h-3 rounded-full transition-all duration-500 shadow-lg"
+                                    style={{ width: `${Math.min(100, totalConceded > 0 ? (totalConceded / (totalScored + totalConceded)) * 100 : 0)}%` }}
+                                  ></div>
+                            </div>
+                                
+                                <div className="text-center bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg p-3 border border-blue-500/30">
+                                  <div className="text-lg font-bold text-white">{netPoints > 0 ? '+' : ''}{netPoints}</div>
+                                  <div className="text-sm text-blue-400">Net Point Difference</div>
+                                </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Medal Breakdown */}
+                  <div className="mb-8">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                      <div className="w-8 h-8 bg-yellow-500/20 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                      </div>
+                      Medal Breakdown
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Medal Collection */}
+                      <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 backdrop-blur-lg border border-yellow-500/20 rounded-2xl p-6 hover:border-yellow-400/40 transition-all duration-300">
+                        <h4 className="text-lg font-semibold text-white mb-4">Medal Collection</h4>
+                        {(() => {
+                          const stats = getCompetitionStats()
+                          const totalMedals = stats.medals.gold + stats.medals.silver + stats.medals.bronze
+                          const medalEfficiency = competitionEntries.length > 0 ? Math.round((totalMedals / competitionEntries.length) * 100) : 0
+                          
+                          return (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="text-center bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors">
+                                  <div className="text-2xl mb-1">🥇</div>
+                                  <div className="text-xl font-bold text-yellow-400">{stats.medals.gold}</div>
+                                  <div className="text-xs text-gray-400">Gold</div>
+                                </div>
+                                <div className="text-center bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors">
+                                  <div className="text-2xl mb-1">🥈</div>
+                                  <div className="text-xl font-bold text-gray-300">{stats.medals.silver}</div>
+                                  <div className="text-xs text-gray-400">Silver</div>
+                                </div>
+                                <div className="text-center bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors">
+                                  <div className="text-2xl mb-1">🥉</div>
+                                  <div className="text-xl font-bold text-orange-400">{stats.medals.bronze}</div>
+                                  <div className="text-xs text-gray-400">Bronze</div>
+                                </div>
+                              </div>
+                              <div className="text-center bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg p-4 border border-yellow-500/30">
+                                <div className="text-lg font-bold text-white">{totalMedals} Total Medals</div>
+                                <div className="text-sm text-yellow-400">Medal efficiency: {medalEfficiency}%</div>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+
+                      {/* Medals by Year */}
+                      <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 backdrop-blur-lg border border-purple-500/20 rounded-2xl p-6 hover:border-purple-400/40 transition-all duration-300">
+                        <h4 className="text-lg font-semibold text-white mb-4">Medals by Year</h4>
+                        {(() => {
+                          const currentYear = new Date().getFullYear()
+                          const yearMedals = []
+                          
+                          for (let year = currentYear - 2; year <= currentYear; year++) {
+                            const yearEntries = competitionEntries.filter(entry => {
+                              const entryYear = entry.competition?.date_start ? new Date(entry.competition.date_start).getFullYear() : null
+                              return entryYear === year
+                            })
+                            
+                            const yearResults = competitionResults.filter(result => {
+                              const entry = competitionEntries.find(e => e.competition_entries_id === result.competition_entries_id)
+                              const entryYear = entry?.competition?.date_start ? new Date(entry.competition.date_start).getFullYear() : null
+                              return entryYear === year
+                            })
+                            
+                            const medals = {
+                              gold: yearResults.filter(r => r.medal === 'Gold').length,
+                              silver: yearResults.filter(r => r.medal === 'Silver').length,
+                              bronze: yearResults.filter(r => r.medal === 'Bronze').length
+                            }
+                            
+                            const total = medals.gold + medals.silver + medals.bronze
+                            if (total > 0) {
+                              yearMedals.push({ year, medals, total })
+                            }
+                          }
+                          
+                          return (
+                            <div className="space-y-3">
+                              {yearMedals.length > 0 ? yearMedals.map((data, index) => (
+                                <div key={data.year} className="bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <div className="font-medium text-white">{data.year}</div>
+                                    <div className="text-sm text-purple-400">{data.total} medals</div>
                                   </div>
-                                  <div className="text-sm text-gray-400">
-                                    {entry?.competition?.Name} • {entry?.discipline?.name}
+                                  <div className="flex space-x-2">
+                                    {data.medals.gold > 0 && <span className="text-yellow-400">🥇{data.medals.gold}</span>}
+                                    {data.medals.silver > 0 && <span className="text-gray-300">🥈{data.medals.silver}</span>}
+                                    {data.medals.bronze > 0 && <span className="text-orange-400">🥉{data.medals.bronze}</span>}
                                   </div>
                                 </div>
-                                <div className="text-right">
-                                  <div className={`font-bold ${bout.result === 'Win' ? 'text-green-400' : 'text-red-400'}`}>
-                                    {bout.result}
+                              )) : (
+                                <div className="text-center text-gray-400 py-4">
+                                  <div className="text-sm">No medal data available</div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </div>
+
+                      {/* Best Performance */}
+                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-lg border border-green-500/20 rounded-2xl p-6 hover:border-green-400/40 transition-all duration-300">
+                        <h4 className="text-lg font-semibold text-white mb-4">Best Performance</h4>
+                        {(() => {
+                          const stats = getCompetitionStats()
+                          const bestMedal = stats.medals.gold >= stats.medals.silver && stats.medals.gold >= stats.medals.bronze ? 'Gold' :
+                                           stats.medals.silver >= stats.medals.bronze ? 'Silver' : 'Bronze'
+                          const mostMedals = Math.max(stats.medals.gold, stats.medals.silver, stats.medals.bronze)
+                          
+                          return (
+                            <div className="space-y-4">
+                              <div className="text-center bg-white/5 rounded-lg p-4">
+                                <div className="text-3xl mb-2">
+                                  {bestMedal === 'Gold' ? '🥇' : bestMedal === 'Silver' ? '🥈' : '🥉'}
+                                </div>
+                                <div className="text-lg font-bold text-white">{mostMedals} {bestMedal}</div>
+                                <div className="text-sm text-gray-400">Most common medal</div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-400">Gold Rate</span>
+                                  <span className="text-yellow-400">{stats.medals.gold > 0 ? Math.round((stats.medals.gold / (stats.medals.gold + stats.medals.silver + stats.medals.bronze)) * 100) : 0}%</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-400">Silver Rate</span>
+                                  <span className="text-gray-300">{stats.medals.silver > 0 ? Math.round((stats.medals.silver / (stats.medals.gold + stats.medals.silver + stats.medals.bronze)) * 100) : 0}%</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-400">Bronze Rate</span>
+                                  <span className="text-orange-400">{stats.medals.bronze > 0 ? Math.round((stats.medals.bronze / (stats.medals.gold + stats.medals.silver + stats.medals.bronze)) * 100) : 0}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Team Performance & Advanced Analytics */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Team Performance */}
+                    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
+                      <h3 className="text-lg font-semibold text-white mb-4">Team Performance</h3>
+                      {competitionTeams.length > 0 ? (
+                        <div className="space-y-4">
+                          {competitionTeams.map((team, index) => {
+                            const teamBouts = competitionBouts.filter(b => b.competition_teams_id === team.competition_teams_id)
+                            const teamWins = teamBouts.filter(b => b.result === 'Win').length
+                            const teamWinRate = teamBouts.length > 0 ? Math.round((teamWins / teamBouts.length) * 100) : 0
+                            
+                            return (
+                              <div key={index} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all duration-300">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-medium text-white">{team.team_name}</div>
+                                    <div className="text-sm text-gray-400">{teamBouts.length} team bouts</div>
+                            </div>
+                              <div className="text-right">
+                                    <div className={`text-2xl font-bold ${
+                                      teamWinRate >= 70 ? 'text-green-400' : 
+                                      teamWinRate >= 50 ? 'text-yellow-400' : 
+                                      'text-red-400'
+                                    }`}>
+                                      {teamWinRate}%
+                                </div>
+                                    <div className="text-xs text-gray-400">Win Rate</div>
+                                </div>
+                        </div>
+                      </div>
+                    )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-400 py-8">
+                          <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                          </div>
+                          <p className="text-sm">No team competitions recorded</p>
+                          <p className="text-xs opacity-75 mt-1">Team performance data will appear here</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Medal Breakdown */}
+                    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
+                      <h3 className="text-lg font-semibold text-white mb-4">Medal Collection</h3>
+                  {(() => {
+                        const stats = getCompetitionStats()
+                        const totalMedals = stats.medals.gold + stats.medals.silver + stats.medals.bronze
+                        
+                            return (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="text-center bg-white/5 rounded-xl p-4">
+                                <div className="text-3xl mb-2">🥇</div>
+                                <div className="text-2xl font-bold text-yellow-400">{stats.medals.gold}</div>
+                                <div className="text-xs text-gray-400">Gold</div>
                                   </div>
-                                  <div className="text-sm text-gray-400">
-                                    {bout.score_for} - {bout.score_against}
+                              <div className="text-center bg-white/5 rounded-xl p-4">
+                                <div className="text-3xl mb-2">🥈</div>
+                                <div className="text-2xl font-bold text-gray-300">{stats.medals.silver}</div>
+                                <div className="text-xs text-gray-400">Silver</div>
                                   </div>
+                              <div className="text-center bg-white/5 rounded-xl p-4">
+                                <div className="text-3xl mb-2">🥉</div>
+                                <div className="text-2xl font-bold text-orange-400">{stats.medals.bronze}</div>
+                                <div className="text-xs text-gray-400">Bronze</div>
+                                </div>
+                                  </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-white">{totalMedals} Total Medals</div>
+                              <div className="text-sm text-gray-400">Medal efficiency: {competitionEntries.length > 0 ? Math.round((totalMedals / competitionEntries.length) * 100) : 0}%</div>
                                 </div>
                               </div>
                             )
-                          })}
+                  })()}
+                    </div>
+                  </div>
+
+                  {/* Performance Insights & Notes */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Performance Insights */}
+                    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
+                      <h3 className="text-lg font-semibold text-white mb-4">Performance Insights</h3>
+                      {(() => {
+                        const stats = getCompetitionStats()
+                        const disciplineStats = getDisciplineStats()
+                        const bestDiscipline = disciplineStats[0]
+                        
+                        return (
+                          <div className="space-y-4">
+                            <div className="bg-white/5 rounded-xl p-4">
+                              <div className="text-sm text-gray-400 mb-1">Best Discipline</div>
+                              <div className="text-lg font-bold text-white">{bestDiscipline?.name || 'N/A'}</div>
+                              <div className="text-sm text-blue-400">
+                                {bestDiscipline ? Math.round((bestDiscipline.wins / Math.max(1, bestDiscipline.bouts)) * 100) : 0}% win rate
+                              </div>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-4">
+                              <div className="text-sm text-gray-400 mb-1">Recent Form</div>
+                              <div className="text-lg font-bold text-white">
+                                {stats.winRate >= 70 ? 'Excellent' : 
+                                 stats.winRate >= 50 ? 'Good' : 'Needs Improvement'}
+                              </div>
+                              <div className="text-sm text-gray-400">{stats.winRate}% overall win rate</div>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-4">
+                              <div className="text-sm text-gray-400 mb-1">Competition Frequency</div>
+                              <div className="text-lg font-bold text-white">{stats.totalCompetitions}</div>
+                              <div className="text-sm text-gray-400">total competitions entered</div>
                         </div>
                       </div>
                     )
                   })()}
+                    </div>
+
+                    {/* Performance Notes */}
+                    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
+                      <h3 className="text-lg font-semibold text-white mb-4">Performance Notes</h3>
+                      <textarea
+                        placeholder="Add observations about this athlete's performance, strengths, areas for improvement..."
+                        className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-32 text-sm"
+                      />
+                      <div className="flex justify-between items-center mt-4">
+                        <div className="text-xs text-gray-500">
+                          Last updated: {new Date().toLocaleDateString()}
+                        </div>
+                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center space-x-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Save Notes</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
             </div>

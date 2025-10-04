@@ -244,7 +244,17 @@ export default function CompetitionResultsPage() {
 
       // Fetch team members for all teams
       const teamIds = teamsData?.map(t => t.competition_teams_id).filter((id): id is number => id !== null) || []
-      let teamMembersData: any[] = []
+      let teamMembersData: Array<{
+        competition_team_members_id: number
+        competition_teams_id: number
+        members_id: number
+        member: {
+          members_id: number
+          first_name: string
+          last_name: string
+          profile_picture_url: string | null
+        }
+      }> = []
       if (teamIds.length > 0) {
         const { data, error: teamMembersError } = await supabase
           .from('competition_team_members')
@@ -257,7 +267,7 @@ export default function CompetitionResultsPage() {
         if (teamMembersError) throw teamMembersError
         teamMembersData = data || []
       }
-      setTeamMembers(teamMembersData || [])
+      setTeamMembers(teamMembersData as unknown as CompetitionTeamMember[] || [])
 
       // Set first discipline as selected by default
       if (disciplinesData && disciplinesData.length > 0) {

@@ -644,7 +644,7 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSettingChange = (category: string, key: string, value: any) => {
+  const handleSettingChange = (category: string, key: string, value: string | number | boolean) => {
     setSettings(prev => ({
       ...prev,
       [category]: {
@@ -1135,7 +1135,7 @@ export default function SettingsPage() {
                         </svg>
                       </div>
                       <p className="text-gray-400 text-sm">No martial arts added yet</p>
-                      <p className="text-gray-500 text-xs mt-1">Click "Add Martial Art" to get started</p>
+                      <p className="text-gray-500 text-xs mt-1">Click &quot;Add Martial Art&quot; to get started</p>
                     </div>
                   ) : (
                     martialArts.map((art) => (
@@ -1350,7 +1350,7 @@ export default function SettingsPage() {
                         </svg>
                       </div>
                       <p className="text-gray-400 text-sm">No competition disciplines added yet</p>
-                      <p className="text-gray-500 text-xs mt-1">Click "Add Discipline" to get started</p>
+                      <p className="text-gray-500 text-xs mt-1">Click &quot;Add Discipline&quot; to get started</p>
                     </div>
                   ) : (
                     competitionDisciplines.map((discipline) => (
@@ -1593,7 +1593,7 @@ export default function SettingsPage() {
                         </svg>
                       </div>
                       <p className="text-gray-400 text-sm">No clubs added yet</p>
-                      <p className="text-gray-500 text-xs mt-1">Click "Add Club" to get started</p>
+                      <p className="text-gray-500 text-xs mt-1">Click &quot;Add Club&quot; to get started</p>
                     </div>
                   ) : (
                     clubs.map((club) => (
@@ -1856,7 +1856,7 @@ export default function SettingsPage() {
                         </svg>
                       </div>
                       <p className="text-gray-400 text-sm">No locations added yet</p>
-                      <p className="text-gray-500 text-xs mt-1">Add a club first, then click "Add Location"</p>
+                      <p className="text-gray-500 text-xs mt-1">Add a club first, then click &quot;Add Location&quot;</p>
                     </div>
                   ) : (
                     locations.map((location) => (

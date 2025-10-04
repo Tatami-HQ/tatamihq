@@ -152,8 +152,8 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
 
         const existingEntries = entriesData?.map(entry => ({
           id: `existing-${entry.competition_entries_id}`,
-          name: `${(entry.members as any)?.first_name || ''} ${(entry.members as any)?.last_name || ''}`.trim() || 'Unnamed Member',
-          category: (entry.competition_disciplines as any)?.name || 'Unnamed Discipline'
+          name: `${(entry.members as { first_name?: string; last_name?: string })?.first_name || ''} ${(entry.members as { first_name?: string; last_name?: string })?.last_name || ''}`.trim() || 'Unnamed Member',
+          category: (entry.competition_disciplines as { name?: string })?.name || 'Unnamed Discipline'
         })) || []
 
         setEntries(existingEntries)
@@ -211,8 +211,8 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
       const existingStaff = staffData?.map(staff => ({
         id: `existing-${staff.competition_coaches_id}`,
         name: staff.name || 
-              (staff.profiles as any)?.name || 
-              `${(staff.members as any)?.first_name || ''} ${(staff.members as any)?.last_name || ''}`.trim() || 
+              (staff.profiles as { name?: string })?.name || 
+              `${(staff.members as { first_name?: string; last_name?: string })?.first_name || ''} ${(staff.members as { first_name?: string; last_name?: string })?.last_name || ''}`.trim() || 
               'Unnamed Staff',
         role: 'Coach', // Default role
         profile_id: staff.profiles_id || undefined,
@@ -418,10 +418,16 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
     setFightUpSelections(newFightUpSelections)
   }
 
-  const handleCompetitionSubmit = async (competitionData: any) => {
+  const handleCompetitionSubmit = async (competitionData: {
+    name: string
+    date: string
+    location: string
+    description?: string
+    [key: string]: unknown
+  }) => {
     try {
       // Add the competition first
-      await onAddCompetition(competitionData)
+      await onAddCompetition(competitionData as unknown as Parameters<typeof onAddCompetition>[0])
       
       // If we have staff to save and we're editing an existing competition
       if (staff.length > 0 && editingCompetition) {
@@ -484,7 +490,7 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
       }
 
       // Convert form data to proper types
-      let competitionData = {
+      const competitionData = {
         Name: formData.Name.trim(),
         date_start: formData.date_start,
         date_end: formData.date_end || null,
@@ -507,11 +513,11 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
         reader.onload = async (e) => {
           const dataUrl = e.target?.result as string
           competitionData.competition_profile_picture = dataUrl
-          await handleCompetitionSubmit(competitionData)
+          await handleCompetitionSubmit(competitionData as unknown as Parameters<typeof handleCompetitionSubmit>[0])
         }
         reader.readAsDataURL(profileImage)
       } else {
-        await handleCompetitionSubmit(competitionData)
+        await handleCompetitionSubmit(competitionData as unknown as Parameters<typeof handleCompetitionSubmit>[0])
       }
     } catch (error) {
       console.error('[AddCompetitionModal:handleSubmit] Error adding competition:', error)
@@ -1217,7 +1223,7 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
                         
                         {filteredDisciplines.length === 0 && disciplineSearchQuery && (
                           <div className="text-center py-4 text-gray-400">
-                            <p>No disciplines found matching "{disciplineSearchQuery}"</p>
+                            <p>No disciplines found matching &quot;{disciplineSearchQuery}&quot;</p>
                           </div>
                         )}
                       </div>
@@ -1333,7 +1339,7 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
                         
                         {filteredMembers.length === 0 && memberSearchQuery && (
                           <div className="text-center py-4 text-gray-400">
-                            <p>No members found matching "{memberSearchQuery}"</p>
+                            <p>No members found matching &quot;{memberSearchQuery}&quot;</p>
                           </div>
                         )}
                       </div>
@@ -1501,7 +1507,7 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
                         
                         {filteredProfiles.length === 0 && profileSearchQuery && (
                           <div className="text-center py-4 text-gray-400 col-span-full">
-                            <p>No coaches found matching "{profileSearchQuery}"</p>
+                            <p>No coaches found matching &quot;{profileSearchQuery}&quot;</p>
                           </div>
                         )}
                       </div>
@@ -1573,7 +1579,7 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
                         {filteredStaffMembers.length === 0 && (
                           <div className="text-center py-4 text-gray-400">
                             {staffMemberSearchQuery ? (
-                              <p>No members found matching "{staffMemberSearchQuery}"</p>
+                              <p>No members found matching &quot;{staffMemberSearchQuery}&quot;</p>
                             ) : members.length === 0 ? (
                               <p>No members loaded. Please check if members exist in the database.</p>
                             ) : (

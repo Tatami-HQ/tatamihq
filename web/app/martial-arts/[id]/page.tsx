@@ -406,7 +406,7 @@ export default function MartialArtProfilePage() {
                     </svg>
                   </div>
                   <p className="text-gray-400 text-sm">No classes added yet</p>
-                  <p className="text-gray-500 text-xs mt-1">Click "Add Class" to get started</p>
+                  <p className="text-gray-500 text-xs mt-1">Click &quot;Add Class&quot; to get started</p>
                 </div>
               ) : (
                 classes.map((cls) => (

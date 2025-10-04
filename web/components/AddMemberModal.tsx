@@ -89,7 +89,7 @@ export default function AddMemberModal({ onClose, onAddMember, prefillData }: Ad
       }
 
       // Convert empty strings to null for optional fields
-      let memberData = {
+      const memberData = {
         first_name: formData.first_name.trim() || null,
         last_name: formData.last_name.trim() || null,
         date_of_birth: formData.date_of_birth || null,

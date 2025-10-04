@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient'
 
-export const handleAuthError = async (error: any): Promise<boolean> => {
+export const handleAuthError = async (error: unknown): Promise<boolean> => {
   console.error('[AuthUtils] Handling auth error:', error)
   
   // Check for various session-related errors
@@ -18,10 +18,10 @@ export const handleAuthError = async (error: any): Promise<boolean> => {
   ]
   
   const isSessionError = sessionErrors.some(errorType => 
-    error?.message?.includes(errorType) || 
-    error?.code?.includes('SESSION') ||
-    error?.status === 401 ||
-    error?.name === 'AuthApiError'
+    (error as { message?: string })?.message?.includes(errorType) || 
+    (error as { code?: string })?.code?.includes('SESSION') ||
+    (error as { status?: number })?.status === 401 ||
+    (error as { name?: string })?.name === 'AuthApiError'
   )
   
   if (isSessionError) {

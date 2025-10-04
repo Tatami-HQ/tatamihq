@@ -51,7 +51,7 @@ export default function AddLeadModal({ onClose, onAddLead }: AddLeadModalProps) 
 
       console.log('Lead data being submitted:', leadData)
 
-      await onAddLead(leadData)
+      await onAddLead(leadData as unknown as Parameters<typeof onAddLead>[0])
     } catch (error) {
       console.error('[AddLeadModal:handleSubmit] Error adding lead:', error)
       setError('Failed to add lead. Please try again.')

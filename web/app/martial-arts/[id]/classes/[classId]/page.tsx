@@ -532,7 +532,7 @@ export default function ClassProfilePage() {
                     </svg>
                   </div>
                   <p className="text-gray-400 text-sm">No belts added yet</p>
-                  <p className="text-gray-500 text-xs mt-1">Click "Add Belt" to create the belt progression</p>
+                  <p className="text-gray-500 text-xs mt-1">Click &quot;Add Belt&quot; to create the belt progression</p>
                 </div>
               ) : (
                 belts.map((belt, index) => (

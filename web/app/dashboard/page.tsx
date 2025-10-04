@@ -575,7 +575,7 @@ export default function DashboardPage() {
             {/* Today's Meetings Card */}
             <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl hover:bg-white/10 hover:border-blue-500/30 hover:shadow-blue-500/10 hover:shadow-2xl transition-all duration-300 cursor-pointer group">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors duration-300">Today's Meetings</h2>
+                <h2 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors duration-300">Today&apos;s Meetings</h2>
                 <span className="bg-green-600/20 text-green-400 text-xs px-2 py-1 rounded-full group-hover:bg-green-500/30 group-hover:text-green-300 transition-all duration-300">6</span>
               </div>
               <div className="space-y-3">

@@ -260,7 +260,12 @@ export default function LogResultsModal({ competition, onClose, onLogResults, on
       // Also fetch members as potential jump-in coaches, but exclude those already assigned
       const assignedMemberIds = competitionCoaches.map(c => c.members_id).filter(id => id > 0)
       
-      let membersData: any[] = []
+      let membersData: Array<{
+        members_id: number
+        first_name: string
+        last_name: string
+        profile_picture_url: string | null
+      }> = []
       if (assignedMemberIds.length > 0) {
         const { data, error: membersError } = await supabase
           .from('members')
@@ -334,7 +339,17 @@ export default function LogResultsModal({ competition, onClose, onLogResults, on
 
       // Fetch team members for all teams
       const teamIds = teamsData?.map(t => t.competition_teams_id).filter((id): id is number => id !== null) || []
-      let teamMembersData: any[] = []
+      let teamMembersData: Array<{
+        competition_team_members_id: number
+        competition_teams_id: number
+        members_id: number
+        member: {
+          members_id: number
+          first_name: string
+          last_name: string
+          profile_picture_url: string | null
+        }
+      }> = []
       if (teamIds.length > 0) {
         const { data, error: teamMembersError } = await supabase
           .from('competition_team_members')
@@ -1539,7 +1554,7 @@ function SelectCompetitorStep({
       
       {competitors.length > 0 && filteredCompetitors.length === 0 && (
         <div className="text-center py-8 text-gray-400">
-          <p>No competitors found matching "{searchQuery}".</p>
+          <p>No competitors found matching &quot;{searchQuery}&quot;.</p>
           <button
             onClick={() => setSearchQuery('')}
             className="mt-2 text-blue-400 hover:text-blue-300 transition-colors duration-200"
@@ -1725,7 +1740,7 @@ function SelectCoachStep({
         ) : (
           <div className="text-center py-8 text-gray-400">
             <p>No competition coaches assigned yet.</p>
-            <p className="text-sm mt-1">Use "Select from Members & Profiles" below to add coaches.</p>
+            <p className="text-sm mt-1">Use &quot;Select from Members &amp; Profiles&quot; below to add coaches.</p>
           </div>
         )}
       </div>
@@ -1868,7 +1883,7 @@ function StepInCoachStep({
 
       {filteredMembers.length === 0 && (
         <div className="text-center py-8 text-gray-400">
-          <p>No members or profiles found matching "{searchQuery}"</p>
+          <p>No members or profiles found matching &quot;{searchQuery}&quot;</p>
         </div>
       )}
 
@@ -3020,7 +3035,7 @@ function SelectTeamMemberStep({
             </div>
             <h4 className="text-green-400 font-medium mb-2">All Team Members Logged!</h4>
             <p className="text-sm text-gray-400 mb-4">
-              You've logged bouts for all {loggedMembers.length} team members.
+              You&apos;ve logged bouts for all {loggedMembers.length} team members.
             </p>
             <button
               onClick={onNoMoreMembers}

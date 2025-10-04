@@ -51,9 +51,8 @@ export default function LeadCard({
       const today = new Date().toISOString().split('T')[0] // Format as YYYY-MM-DD
       await onUpdateLead(lead.leads_id, {
         ...editData,
-        source: editData.source as Lead['source'],
         last_contacted: today
-      })
+      } as Partial<Lead>)
       setIsEditing(false)
     } catch (error) {
       console.error('Error updating lead:', error)
@@ -130,15 +129,15 @@ export default function LeadCard({
           <div className="grid grid-cols-2 gap-2">
             <input
               type="text"
-              value={editData.First}
-              onChange={(e) => setEditData(prev => ({ ...prev, First: e.target.value }))}
+              value={editData.first_name}
+              onChange={(e) => setEditData(prev => ({ ...prev, first_name: e.target.value }))}
               className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="First name"
             />
             <input
               type="text"
-              value={editData.Last}
-              onChange={(e) => setEditData(prev => ({ ...prev, Last: e.target.value }))}
+              value={editData.last_name}
+              onChange={(e) => setEditData(prev => ({ ...prev, last_name: e.target.value }))}
               className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Last name"
             />
@@ -146,8 +145,8 @@ export default function LeadCard({
           
           <input
             type="tel"
-            value={editData.phone_number}
-            onChange={(e) => setEditData(prev => ({ ...prev, phone_number: e.target.value }))}
+            value={editData.phone}
+            onChange={(e) => setEditData(prev => ({ ...prev, phone: e.target.value }))}
             className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="Phone number"
           />
@@ -162,7 +161,7 @@ export default function LeadCard({
           
           <select
             value={editData.source || ''}
-            onChange={(e) => setEditData(prev => ({ ...prev, source: e.target.value as Lead['source'] | '' }))}
+            onChange={(e) => setEditData(prev => ({ ...prev, source: e.target.value } as unknown as typeof editData))}
             className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="" className="bg-gray-800">Select source</option>

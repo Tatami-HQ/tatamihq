@@ -22,9 +22,6 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      }, {
-        // Remember me functionality - persist session if checked
-        shouldCreateUser: false,
       })
 
       if (error) {
@@ -283,7 +280,7 @@ export default function LoginPage() {
         {/* Sign up link outside the form box */}
         <div className="text-center">
           <p className="text-sm text-gray-400">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <button
               type="button"
               className="font-medium text-blue-400 hover:text-blue-200 hover:drop-shadow-lg transition-all duration-200"
