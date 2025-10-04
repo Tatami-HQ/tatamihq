@@ -286,7 +286,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-black overflow-x-hidden relative">
+    <div className="flex min-h-screen bg-black overflow-x-hidden relative ios-status-bar-fix">
       {/* Animated Background */}
       <AnimatedBackground />
       {/* Sidebar - Hidden on mobile */}

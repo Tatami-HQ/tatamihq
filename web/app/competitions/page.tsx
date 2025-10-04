@@ -268,6 +268,11 @@ export default function CompetitionsPage() {
     }
   }
 
+  const handleViewAllResults = (competitionId: number) => {
+    // Navigate to the competition results page
+    router.push(`/competitions/${competitionId}/results`)
+  }
+
   const handleRegisterMembers = async (entries: Array<{
     competitions_id: number
     competition_disciplines_id: number | null
@@ -553,7 +558,7 @@ export default function CompetitionsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-black overflow-x-hidden relative">
+    <div className="flex min-h-screen bg-black overflow-x-hidden relative ios-status-bar-fix">
       {/* Animated Background */}
       <AnimatedBackground />
       
@@ -813,6 +818,7 @@ export default function CompetitionsPage() {
             setSelectedCompetition(null)
           }}
           onLogResults={handleLogResults}
+          onViewAllResults={handleViewAllResults}
         />
       )}
 

@@ -41,6 +41,65 @@ interface MemberBelt {
   colour_hex?: string
 }
 
+interface Competition {
+  competitions_id: number
+  Name: string | null
+  date_start: string | null
+  date_end: string | null
+  location: string | null
+  competition_profile_picture: string | null
+}
+
+interface CompetitionEntry {
+  competition_entries_id: number
+  competitions_id: number | null
+  competition_disciplines_id: number | null
+  members_id: number | null
+  competition_coaches_id: number | null
+  created_at: string
+  competition?: Competition
+  discipline?: CompetitionDiscipline
+}
+
+interface CompetitionDiscipline {
+  competition_disciplines_id: number
+  name: string | null
+  team_event: boolean | null
+}
+
+interface CompetitionBout {
+  competition_bouts_id: number
+  competition_entries_id: number | null
+  competition_teams_id: number | null
+  opponent_name: string | null
+  opponent_club: string | null
+  score_for: number | null
+  score_against: number | null
+  result: string | null
+  is_final: boolean | null
+  round: string | null
+  notes: string | null
+  created_at: string
+}
+
+interface CompetitionResult {
+  competition_results_id: number
+  competition_entries_id: number | null
+  medal: string | null
+  round_reached: string | null
+  created_at: string
+}
+
+interface CompetitionTeam {
+  competition_teams_id: number
+  team_name: string | null
+  result: string | null
+  medal: string | null
+  competition_disciplines_id: number | null
+  competition?: Competition
+  discipline?: CompetitionDiscipline
+}
+
 interface MemberProfileModalProps {
   member: Member | null
   onClose: () => void
@@ -66,6 +125,13 @@ export default function MemberProfileModal({
   const [classes, setClasses] = useState<MartialArtClass[]>([])
   const [belts, setBelts] = useState<BeltSystem[]>([])
   const [memberBelts, setMemberBelts] = useState<MemberBelt[]>([])
+  
+  // Competition data
+  const [competitionEntries, setCompetitionEntries] = useState<CompetitionEntry[]>([])
+  const [competitionBouts, setCompetitionBouts] = useState<CompetitionBout[]>([])
+  const [competitionResults, setCompetitionResults] = useState<CompetitionResult[]>([])
+  const [competitionTeams, setCompetitionTeams] = useState<CompetitionTeam[]>([])
+  const [isLoadingCompetitions, setIsLoadingCompetitions] = useState(false)
   
   // Form state for new belt
   const [newBeltForm, setNewBeltForm] = useState({
@@ -95,6 +161,13 @@ export default function MemberProfileModal({
       loadMemberBelts()
     }
   }, [member])
+
+  // Load competition data when competition tab is selected
+  useEffect(() => {
+    if (member && activeTab === 'competition') {
+      fetchCompetitionData()
+    }
+  }, [member, activeTab])
 
   const loadMartialArtsData = async () => {
     try {
@@ -158,6 +231,166 @@ export default function MemberProfileModal({
     } finally {
       setIsLoadingBelts(false)
     }
+  }
+
+  const fetchCompetitionData = async () => {
+    if (!member?.members_id) return
+
+    setIsLoadingCompetitions(true)
+    try {
+      // Fetch competition entries
+      const { data: entries, error: entriesError } = await supabase
+        .from('competition_entries')
+        .select(`
+          *,
+          competitions:competitions_id (
+            competitions_id,
+            Name,
+            date_start,
+            date_end,
+            location,
+            competition_profile_picture
+          ),
+          competition_disciplines:competition_disciplines_id (
+            competition_disciplines_id,
+            name,
+            team_event
+          )
+        `)
+        .eq('members_id', member.members_id)
+
+      if (entriesError) {
+        console.error('Error fetching competition entries:', entriesError)
+      } else {
+        setCompetitionEntries(entries || [])
+      }
+
+      // Fetch competition bouts for this member's entries
+      if (entries && entries.length > 0) {
+        const entryIds = entries.map(e => e.competition_entries_id).filter((id): id is number => id !== null)
+        
+        const { data: bouts, error: boutsError } = await supabase
+          .from('competition_bouts')
+          .select('*')
+          .in('competition_entries_id', entryIds)
+
+        if (boutsError) {
+          console.error('Error fetching competition bouts:', boutsError)
+        } else {
+          setCompetitionBouts(bouts || [])
+        }
+
+        // Fetch competition results
+        const { data: results, error: resultsError } = await supabase
+          .from('competition_results')
+          .select('*')
+          .in('competition_entries_id', entryIds)
+
+        if (resultsError) {
+          console.error('Error fetching competition results:', resultsError)
+        } else {
+          setCompetitionResults(results || [])
+        }
+      }
+
+    } catch (error) {
+      console.error('Error fetching competition data:', error)
+    } finally {
+      setIsLoadingCompetitions(false)
+    }
+  }
+
+  // Analytics calculation functions
+  const getCompetitionStats = () => {
+    const totalCompetitions = competitionEntries.length
+    const totalBouts = competitionBouts.length
+    const wins = competitionBouts.filter(bout => bout.result === 'Win').length
+    const losses = competitionBouts.filter(bout => bout.result === 'Loss').length
+    const winRate = totalBouts > 0 ? Math.round((wins / totalBouts) * 100) : 0
+
+    const medals = {
+      gold: competitionResults.filter(r => r.medal === 'Gold').length,
+      silver: competitionResults.filter(r => r.medal === 'Silver').length,
+      bronze: competitionResults.filter(r => r.medal === 'Bronze').length
+    }
+
+    const totalMedals = medals.gold + medals.silver + medals.bronze
+
+    return {
+      totalCompetitions,
+      totalBouts,
+      wins,
+      losses,
+      winRate,
+      medals,
+      totalMedals
+    }
+  }
+
+  const getDisciplineStats = () => {
+    const disciplineMap = new Map<string, {
+      name: string,
+      competitions: number,
+      bouts: number,
+      wins: number,
+      losses: number,
+      medals: { gold: number, silver: number, bronze: number }
+    }>()
+
+    competitionEntries.forEach(entry => {
+      const disciplineName = entry.discipline?.name || 'Unknown'
+      if (!disciplineMap.has(disciplineName)) {
+        disciplineMap.set(disciplineName, {
+          name: disciplineName,
+          competitions: 0,
+          bouts: 0,
+          wins: 0,
+          losses: 0,
+          medals: { gold: 0, silver: 0, bronze: 0 }
+        })
+      }
+      disciplineMap.get(disciplineName)!.competitions++
+    })
+
+    competitionBouts.forEach(bout => {
+      const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
+      if (entry) {
+        const disciplineName = entry.discipline?.name || 'Unknown'
+        const disciplineStats = disciplineMap.get(disciplineName)
+        if (disciplineStats) {
+          disciplineStats.bouts++
+          if (bout.result === 'Win') disciplineStats.wins++
+          if (bout.result === 'Loss') disciplineStats.losses++
+        }
+      }
+    })
+
+    competitionResults.forEach(result => {
+      const entry = competitionEntries.find(e => e.competition_entries_id === result.competition_entries_id)
+      if (entry && result.medal) {
+        const disciplineName = entry.discipline?.name || 'Unknown'
+        const disciplineStats = disciplineMap.get(disciplineName)
+        if (disciplineStats) {
+          if (result.medal === 'Gold') disciplineStats.medals.gold++
+          if (result.medal === 'Silver') disciplineStats.medals.silver++
+          if (result.medal === 'Bronze') disciplineStats.medals.bronze++
+        }
+      }
+    })
+
+    return Array.from(disciplineMap.values()).sort((a, b) => b.competitions - a.competitions)
+  }
+
+  const getRecentCompetitions = () => {
+    return competitionEntries
+      .sort((a, b) => new Date(b.competition?.date_start || '').getTime() - new Date(a.competition?.date_start || '').getTime())
+      .slice(0, 5)
+  }
+
+  const getRecentBouts = () => {
+    return competitionBouts
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 10)
   }
 
   const handleMartialArtChange = (martialArtId: string) => {
@@ -880,18 +1113,184 @@ export default function MemberProfileModal({
 
           {activeTab === 'competition' && (
             <div className="space-y-6">
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22v-4" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 18h8" />
-                  </svg>
+              {isLoadingCompetitions ? (
+                <div className="text-center py-12">
+                  <div className="w-8 h-8 mx-auto mb-4 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-gray-400">Loading competition data...</p>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Competition History</h3>
-                <p className="text-gray-400">No competitions recorded yet</p>
-                <p className="text-sm text-gray-500 mt-2">This section will be populated over time</p>
-              </div>
+              ) : competitionEntries.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-2">Competition History</h3>
+                  <p className="text-gray-400">No competitions recorded yet</p>
+                  <p className="text-sm text-gray-500 mt-2">This section will be populated over time</p>
+                </div>
+              ) : (
+                <>
+                  {/* Overall Stats */}
+                  {(() => {
+                    const stats = getCompetitionStats()
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+                          <div className="text-2xl font-bold text-blue-400 mb-1">{stats.totalCompetitions}</div>
+                          <div className="text-sm text-gray-400">Competitions</div>
+                        </div>
+                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+                          <div className="text-2xl font-bold text-green-400 mb-1">{stats.totalBouts}</div>
+                          <div className="text-sm text-gray-400">Total Bouts</div>
+                        </div>
+                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+                          <div className="text-2xl font-bold text-yellow-400 mb-1">{stats.winRate}%</div>
+                          <div className="text-sm text-gray-400">Win Rate</div>
+                        </div>
+                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+                          <div className="text-2xl font-bold text-purple-400 mb-1">{stats.totalMedals}</div>
+                          <div className="text-sm text-gray-400">Medals</div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Medal Breakdown */}
+                  {(() => {
+                    const stats = getCompetitionStats()
+                    return (
+                      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mb-6">
+                        <h3 className="text-lg font-semibold text-white mb-4">Medal Collection</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="text-center">
+                            <div className="text-3xl mb-2">🥇</div>
+                            <div className="text-xl font-bold text-yellow-400">{stats.medals.gold}</div>
+                            <div className="text-sm text-gray-400">Gold</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-3xl mb-2">🥈</div>
+                            <div className="text-xl font-bold text-gray-300">{stats.medals.silver}</div>
+                            <div className="text-sm text-gray-400">Silver</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-3xl mb-2">🥉</div>
+                            <div className="text-xl font-bold text-orange-400">{stats.medals.bronze}</div>
+                            <div className="text-sm text-gray-400">Bronze</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Discipline Breakdown */}
+                  {(() => {
+                    const disciplineStats = getDisciplineStats()
+                    return disciplineStats.length > 0 && (
+                      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mb-6">
+                        <h3 className="text-lg font-semibold text-white mb-4">Performance by Discipline</h3>
+                        <div className="space-y-3">
+                          {disciplineStats.map((discipline, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                              <div className="flex-1">
+                                <div className="font-medium text-white">{discipline.name}</div>
+                                <div className="text-sm text-gray-400">
+                                  {discipline.competitions} competitions • {discipline.bouts} bouts • {discipline.wins}W-{discipline.losses}L
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {discipline.medals.gold > 0 && <span className="text-yellow-400">🥇{discipline.medals.gold}</span>}
+                                {discipline.medals.silver > 0 && <span className="text-gray-300">🥈{discipline.medals.silver}</span>}
+                                {discipline.medals.bronze > 0 && <span className="text-orange-400">🥉{discipline.medals.bronze}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Recent Competitions */}
+                  {(() => {
+                    const recentCompetitions = getRecentCompetitions()
+                    return recentCompetitions.length > 0 && (
+                      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mb-6">
+                        <h3 className="text-lg font-semibold text-white mb-4">Recent Competitions</h3>
+                        <div className="space-y-3">
+                          {recentCompetitions.map((entry, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                {entry.competition?.competition_profile_picture ? (
+                                  <img
+                                    src={entry.competition.competition_profile_picture}
+                                    alt={entry.competition.Name || 'Competition'}
+                                    className="w-10 h-10 rounded-lg object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-medium text-white">{entry.competition?.Name}</div>
+                                  <div className="text-sm text-gray-400">
+                                    {entry.discipline?.name} • {entry.competition?.date_start && new Date(entry.competition.date_start).toLocaleDateString()}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm text-gray-400">
+                                  {competitionBouts.filter(b => b.competition_entries_id === entry.competition_entries_id).length} bouts
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {competitionResults.filter(r => r.competition_entries_id === entry.competition_entries_id && r.medal).length > 0 && 'Medal Winner'}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Recent Bouts */}
+                  {(() => {
+                    const recentBouts = getRecentBouts()
+                    return recentBouts.length > 0 && (
+                      <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-white mb-4">Recent Bouts</h3>
+                        <div className="space-y-2">
+                          {recentBouts.map((bout, index) => {
+                            const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
+                            return (
+                              <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                <div className="flex-1">
+                                  <div className="font-medium text-white">
+                                    vs {bout.opponent_name || 'Unknown Opponent'}
+                                  </div>
+                                  <div className="text-sm text-gray-400">
+                                    {entry?.competition?.Name} • {entry?.discipline?.name}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className={`font-bold ${bout.result === 'Win' ? 'text-green-400' : 'text-red-400'}`}>
+                                    {bout.result}
+                                  </div>
+                                  <div className="text-sm text-gray-400">
+                                    {bout.score_for} - {bout.score_against}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </>
+              )}
             </div>
           )}
 
