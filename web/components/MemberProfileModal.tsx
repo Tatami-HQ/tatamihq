@@ -79,6 +79,15 @@ export default function MemberProfileModal({
   const [isSavingBelt, setIsSavingBelt] = useState(false)
   const [showImageOptions, setShowImageOptions] = useState(false)
 
+  // Helper function to validate date format
+  const isValidDate = (dateString: string): boolean => {
+    if (!dateString) return false
+    const regex = /^\d{4}-\d{2}-\d{2}$/
+    if (!regex.test(dateString)) return false
+    const date = new Date(dateString)
+    return date instanceof Date && !isNaN(date.getTime())
+  }
+
   // Load martial arts data when component mounts
   useEffect(() => {
     if (member) {
@@ -178,6 +187,11 @@ export default function MemberProfileModal({
   const handleAddBelt = async () => {
     if (!member || !newBeltForm.martial_art_id || !newBeltForm.belt_system_id || !newBeltForm.awarded_date) {
       alert('Please fill in all required fields')
+      return
+    }
+
+    if (!isValidDate(newBeltForm.awarded_date)) {
+      alert('Please enter a valid date in YYYY-MM-DD format')
       return
     }
 
@@ -660,10 +674,11 @@ export default function MemberProfileModal({
                   <div>
                     <span className="text-sm text-gray-400">Date of Birth</span>
                     <input
-                      type="date"
+                      type="text"
                       value={editForm.date_of_birth || member.date_of_birth || ''}
                       onChange={(e) => handleFieldChange('date_of_birth', e.target.value)}
                       onBlur={(e) => handleFieldBlur('date_of_birth', e.target.value)}
+                      placeholder="YYYY-MM-DD"
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                     />
                   </div>
@@ -735,10 +750,11 @@ export default function MemberProfileModal({
                   <div>
                     <span className="text-sm text-gray-400">Join Date</span>
                     <input
-                      type="date"
+                      type="text"
                       value={editForm.join_date || member.join_date || ''}
                       onChange={(e) => handleFieldChange('join_date', e.target.value)}
                       onBlur={(e) => handleFieldBlur('join_date', e.target.value)}
+                      placeholder="YYYY-MM-DD"
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                     />
                   </div>
@@ -944,17 +960,25 @@ export default function MemberProfileModal({
                     <div>
                       <label className="text-sm text-gray-400 mb-2 block">Awarded Date *</label>
                       <input
-                        type="date"
+                        type="text"
                         value={newBeltForm.awarded_date}
                         onChange={(e) => setNewBeltForm(prev => ({ ...prev, awarded_date: e.target.value }))}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                        placeholder="YYYY-MM-DD"
+                        className={`w-full bg-white/10 border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
+                          newBeltForm.awarded_date && !isValidDate(newBeltForm.awarded_date) 
+                            ? 'border-red-500' 
+                            : 'border-white/20'
+                        }`}
                       />
+                      {newBeltForm.awarded_date && !isValidDate(newBeltForm.awarded_date) && (
+                        <p className="text-red-400 text-xs mt-1">Please use YYYY-MM-DD format</p>
+                      )}
                     </div>
 
                     {/* Add Button */}
                     <button
                       onClick={handleAddBelt}
-                      disabled={isSavingBelt || !newBeltForm.martial_art_id || !newBeltForm.belt_system_id || !newBeltForm.awarded_date}
+                      disabled={isSavingBelt || !newBeltForm.martial_art_id || !newBeltForm.belt_system_id || !newBeltForm.awarded_date || !isValidDate(newBeltForm.awarded_date)}
                       className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
                     >
                       {isSavingBelt ? (

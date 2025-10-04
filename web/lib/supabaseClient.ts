@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -16,12 +17,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
-    // Add error handling for refresh token issues
-    onRefreshTokenError: async (error) => {
-      console.warn('[Supabase] Refresh token error:', error)
-      // Clear the session when refresh token fails
-      await supabase.auth.signOut()
+    flowType: 'pkce'
+  }
+})
+
+// Set up auth state change listener
+supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+  console.log('[Supabase] Auth state change:', event, session?.user?.id || 'no user')
+  
+  if (event === 'SIGNED_OUT') {
+    // Clear any cached data when signing out
+    if (typeof window !== 'undefined') {
+      const keys = Object.keys(localStorage)
+      keys.forEach(key => {
+        if (key.includes('supabase') || key.includes('sb-')) {
+          localStorage.removeItem(key)
+        }
+      })
     }
   }
 })

@@ -12,6 +12,7 @@ import AnimatedBackground from '@/components/AnimatedBackground'
 import AddCompetitionModal from '@/components/AddCompetitionModal'
 import LogResultsModal from '@/components/LogResultsModal'
 import RegisterMembersModal from '@/components/RegisterMembersModal'
+import CompetitionsMap from '@/components/CompetitionsMap'
 
 export interface Competition {
   competitions_id: number
@@ -45,6 +46,7 @@ export default function CompetitionsPage() {
   const [showLogResultsModal, setShowLogResultsModal] = useState(false)
   const [showRegisterMembersModal, setShowRegisterMembersModal] = useState(false)
   const [selectedCompetition, setSelectedCompetition] = useState<Competition | null>(null)
+  const [viewMode, setViewMode] = useState<'cards' | 'map'>('cards')
   const router = useRouter()
 
   useEffect(() => {
@@ -110,8 +112,14 @@ export default function CompetitionsPage() {
         .order('date_start', { ascending: false })
 
       if (error) {
-        console.error('[Competitions:fetchCompetitions] Supabase error:', error)
-        setError(`Failed to load competitions: ${error.message}`)
+        console.error('[Competitions:fetchCompetitions] Supabase error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          fullError: error
+        })
+        setError(`Failed to load competitions: ${error.message || 'Unknown error occurred'}`)
         return
       }
 
@@ -237,6 +245,7 @@ export default function CompetitionsPage() {
     total_bronze: number | null
   }) => {
     try {
+      // Update competition with overall results
       const { data, error } = await supabase
         .from('competitions')
         .update(resultsData)
@@ -250,6 +259,9 @@ export default function CompetitionsPage() {
           comp.competitions_id === competitionId ? data[0] : comp
         ))
       }
+
+      // Refresh competitions to get updated data
+      fetchCompetitions()
     } catch (error) {
       console.error('Error logging results:', error)
       throw error
@@ -280,12 +292,36 @@ export default function CompetitionsPage() {
 
   const getUpcomingCompetitions = () => {
     const today = new Date().toISOString().split('T')[0]
-    return competitions.filter(comp => comp.date_start && comp.date_start >= today)
+    
+    return competitions.filter(comp => {
+      if (!comp.date_start) return false
+      
+      // For single day events, check if start date is today or in the future
+      if (comp.singular_day_event) {
+        return comp.date_start >= today
+      }
+      
+      // For multi-day events, check if end date is today or in the future
+      const endDate = comp.date_end || comp.date_start
+      return endDate >= today
+    })
   }
 
   const getPastCompetitions = () => {
     const today = new Date().toISOString().split('T')[0]
-    return competitions.filter(comp => comp.date_start && comp.date_start < today)
+    
+    return competitions.filter(comp => {
+      if (!comp.date_start) return false
+      
+      // For single day events, check if start date is before today
+      if (comp.singular_day_event) {
+        return comp.date_start < today
+      }
+      
+      // For multi-day events, check if end date is before today
+      const endDate = comp.date_end || comp.date_start
+      return endDate < today
+    })
   }
 
   const filteredUpcoming = getUpcomingCompetitions().filter(comp => {
@@ -344,7 +380,7 @@ export default function CompetitionsPage() {
 
   const CompetitionCard = ({ competition, isUpcoming }: { competition: Competition, isUpcoming: boolean }) => (
     <div 
-      className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden hover:bg-white/10 hover:border-blue-500/30 transition-all duration-300 group cursor-pointer"
+      className="relative bg-white/5 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden hover:bg-white/10 hover:border-blue-500/30 transition-all duration-300 group cursor-pointer shadow-2xl shadow-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/50"
       onClick={() => {
         setEditingCompetition(competition)
       }}
@@ -368,23 +404,7 @@ export default function CompetitionsPage() {
 
       {/* Content */}
       <div className="relative z-10 p-6 min-h-[200px] flex flex-col">
-        {/* Log Results Button - Bottom Right Corner */}
-        {!isUpcoming && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setSelectedCompetition(competition)
-              setShowLogResultsModal(true)
-            }}
-            className="absolute bottom-4 right-4 bg-yellow-600/80 hover:bg-yellow-600 text-white p-2 rounded-lg transition-colors duration-200 backdrop-blur-sm border border-yellow-400/30 z-20"
-            title="Log Results"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-        )}
-        {/* Header with status badges */}
+        {/* Header with status badges and log results button */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <h3 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors duration-300 mb-2">
@@ -395,11 +415,17 @@ export default function CompetitionsPage() {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            {isUpcoming && (
-              <span className="bg-blue-600/80 backdrop-blur-sm text-blue-100 text-xs px-3 py-1 rounded-full border border-blue-400/30">
-                Upcoming
-              </span>
-            )}
+            {/* Log Results Button - Top right */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setSelectedCompetition(competition)
+                setShowLogResultsModal(true)
+              }}
+              className="bg-blue-600/80 hover:bg-blue-600 hover:scale-105 text-white px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 backdrop-blur-sm border border-blue-400/30"
+            >
+              Log Results
+            </button>
             {!isUpcoming && competition.overall_rank && (
               <span className="bg-yellow-600/80 backdrop-blur-sm text-yellow-100 text-xs px-3 py-1 rounded-full border border-yellow-400/30">
                 Rank #{competition.overall_rank}
@@ -450,7 +476,7 @@ export default function CompetitionsPage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-center mt-auto pt-4">
+        <div className="flex items-center justify-center space-x-3 mt-auto pt-4">
           {/* Register Members Button - Only for upcoming competitions */}
           {isUpcoming && (
             <button
@@ -622,10 +648,52 @@ export default function CompetitionsPage() {
                   )}
                 </div>
               </div>
+              
+              {/* View Toggle */}
+              <div className="flex items-center space-x-1 bg-white/5 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    viewMode === 'cards'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('map')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    viewMode === 'map'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
+          {/* Map View */}
+          {viewMode === 'map' && (
+            <div className="mb-8">
+              <CompetitionsMap
+                competitions={competitions}
+                selectedCompetition={selectedCompetition}
+                onCompetitionSelect={(competition) => setSelectedCompetition(competition)}
+              />
+            </div>
+          )}
+
           {/* Upcoming Competitions Section */}
+          {viewMode === 'cards' && (
+            <>
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white flex items-center">
@@ -704,6 +772,9 @@ export default function CompetitionsPage() {
               </div>
             )}
           </div>
+            </>
+          )}
+
         </main>
       </div>
       

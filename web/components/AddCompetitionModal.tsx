@@ -4,6 +4,16 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import type { Competition } from '../app/competitions/page'
 
+interface Profile {
+  profiles_id: number
+  user_id: string | null
+  clubs_id: number | null
+  location_id: number | null
+  role: 'admin' | 'coach' | 'member' | null
+  name: string | null
+  created_at: string
+}
+
 interface AddCompetitionModalProps {
   onClose: () => void
   onAddCompetition: (competitionData: Omit<Competition, 'competitions_id' | 'created_at'>) => Promise<void>
@@ -25,7 +35,8 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
     competition_downloads: editingCompetition?.competition_downloads || ''
   })
   const [entries, setEntries] = useState<Array<{id: string, name: string, category: string}>>([])
-  const [staff, setStaff] = useState<Array<{id: string, name: string, role: string}>>([])
+  const [staff, setStaff] = useState<Array<{id: string, name: string, role: string, profile_id?: number, member_id?: number, staff_type: 'coach' | 'member' | 'manual'}>>([])
+  const [coaches, setCoaches] = useState<Profile[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [profileImage, setProfileImage] = useState<File | null>(null)
@@ -40,6 +51,12 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
   const [disciplineSearchQuery, setDisciplineSearchQuery] = useState('')
   const [memberSearchQuery, setMemberSearchQuery] = useState('')
   const [fightUpSelections, setFightUpSelections] = useState<Set<string>>(new Set()) // Format: "memberId-disciplineId"
+  
+  // Bulk staff state
+  const [selectedProfiles, setSelectedProfiles] = useState<Set<number>>(new Set())
+  const [selectedStaffMembers, setSelectedStaffMembers] = useState<Set<number>>(new Set())
+  const [profileSearchQuery, setProfileSearchQuery] = useState('')
+  const [staffMemberSearchQuery, setStaffMemberSearchQuery] = useState('')
 
   // Fetch disciplines and members when entries tab is active
   useEffect(() => {
@@ -47,6 +64,41 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
       fetchData()
     }
   }, [activeTab])
+
+  // Fetch coaches and members when staff tab is active
+  useEffect(() => {
+    if (activeTab === 'staff') {
+      fetchCoaches()
+      fetchMembersForStaff() // Fetch only members for staff selection
+      
+      // If editing a competition, also fetch existing staff assignments
+      if (editingCompetition) {
+        fetchExistingStaff(editingCompetition.competitions_id)
+      }
+    }
+  }, [activeTab, editingCompetition])
+
+  const fetchMembersForStaff = async () => {
+    try {
+      // Fetch members for staff selection
+      const { data: membersData, error: membersError } = await supabase
+        .from('members')
+        .select('members_id, first_name, last_name, email_address')
+        .order('first_name')
+
+      if (membersError) throw membersError
+
+      setMembers(
+        membersData?.map(m => ({
+          id: m.members_id,
+          name: `${m.first_name || ''} ${m.last_name || ''}`.trim() || 'Unnamed Member',
+          email: m.email_address || ''
+        })) || []
+      )
+    } catch (error) {
+      console.error('Error fetching members for staff:', error)
+    }
+  }
 
   const fetchData = async () => {
     setIsLoadingData(true)
@@ -110,6 +162,68 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
       console.error('Error fetching data:', error)
     } finally {
       setIsLoadingData(false)
+    }
+  }
+
+  const fetchCoaches = async () => {
+    try {
+      // Fetch all profiles regardless of role
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          profiles_id,
+          user_id,
+          clubs_id,
+          location_id,
+          role,
+          name,
+          created_at
+        `)
+        .not('role', 'is', null) // Get all profiles that have a role assigned
+        .order('created_at')
+
+      if (profilesError) throw profilesError
+
+      setCoaches(profilesData || [])
+    } catch (error) {
+      console.error('Error fetching coaches:', error)
+    }
+  }
+
+  const fetchExistingStaff = async (competitionId: number) => {
+    try {
+      // Fetch existing staff assignments from competition_coaches table
+      const { data: staffData, error: staffError } = await supabase
+        .from('competition_coaches')
+        .select(`
+          competition_coaches_id,
+          profiles_id,
+          members_id,
+          name,
+          profiles!left(profiles_id, name, role),
+          members!left(members_id, first_name, last_name)
+        `)
+        .eq('competitions_id', competitionId)
+
+      if (staffError) throw staffError
+
+      // Convert to the expected staff format
+      const existingStaff = staffData?.map(staff => ({
+        id: `existing-${staff.competition_coaches_id}`,
+        name: staff.name || 
+              (staff.profiles as any)?.name || 
+              `${(staff.members as any)?.first_name || ''} ${(staff.members as any)?.last_name || ''}`.trim() || 
+              'Unnamed Staff',
+        role: 'Coach', // Default role
+        profile_id: staff.profiles_id || undefined,
+        member_id: staff.members_id || undefined,
+        staff_type: staff.profiles_id ? 'coach' as const : 'member' as const
+      })) || []
+
+      setStaff(existingStaff)
+      console.log(`Loaded ${existingStaff.length} existing staff members for competition ${competitionId}`)
+    } catch (error) {
+      console.error('Error fetching existing staff:', error)
     }
   }
 
@@ -304,6 +418,52 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
     setFightUpSelections(newFightUpSelections)
   }
 
+  const handleCompetitionSubmit = async (competitionData: any) => {
+    try {
+      // Add the competition first
+      await onAddCompetition(competitionData)
+      
+      // If we have staff to save and we're editing an existing competition
+      if (staff.length > 0 && editingCompetition) {
+        await saveStaffAssignments(editingCompetition.competitions_id)
+      }
+    } catch (error) {
+      console.error('Error in handleCompetitionSubmit:', error)
+      throw error
+    }
+  }
+
+  const saveStaffAssignments = async (competitionId: number) => {
+    try {
+      // Save staff assignments to competition_coaches table
+      const staffToSave = staff.map(staffMember => ({
+        competitions_id: competitionId,
+        profiles_id: staffMember.profile_id || null,
+        members_id: staffMember.member_id || null,
+        name: staffMember.name,
+        clubs_id: null, // Can be set later if needed
+        location_id: null // Can be set later if needed
+      }))
+
+      if (staffToSave.length > 0) {
+        // Insert all staff assignments for this competition
+        const { error: insertError } = await supabase
+          .from('competition_coaches')
+          .insert(staffToSave)
+
+        if (insertError) {
+          console.error('Error inserting competition coaches:', insertError)
+          throw insertError
+        }
+
+        console.log(`Successfully saved ${staffToSave.length} staff assignments to competition ${competitionId}`)
+      }
+    } catch (error) {
+      console.error('Error saving staff assignments:', error)
+      // Don't throw here - staff assignment failure shouldn't prevent competition creation
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -347,11 +507,11 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
         reader.onload = async (e) => {
           const dataUrl = e.target?.result as string
           competitionData.competition_profile_picture = dataUrl
-          await onAddCompetition(competitionData)
+          await handleCompetitionSubmit(competitionData)
         }
         reader.readAsDataURL(profileImage)
       } else {
-        await onAddCompetition(competitionData)
+        await handleCompetitionSubmit(competitionData)
       }
     } catch (error) {
       console.error('[AddCompetitionModal:handleSubmit] Error adding competition:', error)
@@ -456,18 +616,154 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
     const newStaff = {
       id: Date.now().toString(),
       name: '',
-      role: ''
+      role: '',
+      profile_id: undefined,
+      member_id: undefined,
+      staff_type: 'manual' as 'coach' | 'member' | 'manual'
     }
     setStaff(prev => [...prev, newStaff])
   }
 
-  const updateStaff = (id: string, field: 'name' | 'role', value: string) => {
+  const updateStaff = (id: string, field: 'name' | 'role' | 'profile_id' | 'member_id' | 'staff_type', value: string | number | undefined) => {
     setStaff(prev => prev.map(member => 
       member.id === id ? { ...member, [field]: value } : member
     ))
   }
 
-  const removeStaff = (id: string) => {
+  // Bulk staff management functions
+  const handleProfileToggle = (profileId: number) => {
+    const newSelected = new Set(selectedProfiles)
+    if (newSelected.has(profileId)) {
+      newSelected.delete(profileId)
+    } else {
+      newSelected.add(profileId)
+    }
+    setSelectedProfiles(newSelected)
+  }
+
+  const handleStaffMemberToggle = (memberId: number) => {
+    const newSelected = new Set(selectedStaffMembers)
+    if (newSelected.has(memberId)) {
+      newSelected.delete(memberId)
+    } else {
+      newSelected.add(memberId)
+    }
+    setSelectedStaffMembers(newSelected)
+  }
+
+  const handleSelectAllProfiles = () => {
+    const allFilteredProfilesSelected = filteredProfiles.every(p => selectedProfiles.has(p.profiles_id))
+    if (allFilteredProfilesSelected) {
+      const newSelected = new Set(selectedProfiles)
+      filteredProfiles.forEach(p => newSelected.delete(p.profiles_id))
+      setSelectedProfiles(newSelected)
+    } else {
+      const newSelected = new Set(selectedProfiles)
+      filteredProfiles.forEach(p => newSelected.add(p.profiles_id))
+      setSelectedProfiles(newSelected)
+    }
+  }
+
+  const handleSelectAllStaffMembers = () => {
+    const allFilteredStaffMembersSelected = filteredStaffMembers.every(m => selectedStaffMembers.has(m.id))
+    if (allFilteredStaffMembersSelected) {
+      const newSelected = new Set(selectedStaffMembers)
+      filteredStaffMembers.forEach(m => newSelected.delete(m.id))
+      setSelectedStaffMembers(newSelected)
+    } else {
+      const newSelected = new Set(selectedStaffMembers)
+      filteredStaffMembers.forEach(m => newSelected.add(m.id))
+      setSelectedStaffMembers(newSelected)
+    }
+  }
+
+  const handleBulkStaffAdd = async () => {
+    if (selectedProfiles.size === 0 && selectedStaffMembers.size === 0) {
+      alert('Please select at least one staff member')
+      return
+    }
+
+    try {
+      const newStaff: Array<{id: string, name: string, role: string, profile_id?: number, member_id?: number, staff_type: 'coach' | 'member' | 'manual'}> = []
+      
+      // Add selected profiles
+      selectedProfiles.forEach(profileId => {
+        const profile = coaches.find(p => p.profiles_id === profileId)
+        if (profile) {
+          newStaff.push({
+            id: `profile-${profileId}-${Date.now()}`,
+            name: profile.name || 'Unnamed Profile',
+            role: 'Coach', // Default role for profiles
+            profile_id: profileId,
+            staff_type: 'coach'
+          })
+        }
+      })
+
+      // Add selected members
+      selectedStaffMembers.forEach(memberId => {
+        const member = members.find(m => m.id === memberId)
+        if (member) {
+          newStaff.push({
+            id: `member-${memberId}-${Date.now()}`,
+            name: member.name,
+            role: 'Coach', // Default role for members
+            member_id: memberId,
+            staff_type: 'member'
+          })
+        }
+      })
+
+      setStaff(prev => [...prev, ...newStaff])
+      setSelectedProfiles(new Set())
+      setSelectedStaffMembers(new Set())
+      setProfileSearchQuery('')
+      setStaffMemberSearchQuery('')
+      
+      alert(`Successfully added ${newStaff.length} staff members!`)
+    } catch (error) {
+      console.error('Unexpected error adding staff:', error)
+      alert('An unexpected error occurred. Please try again.')
+    }
+  }
+
+  // Filter profiles and staff members based on search queries
+  const filteredProfiles = coaches.filter(profile =>
+    (profile.name || '').toLowerCase().includes(profileSearchQuery.toLowerCase())
+  )
+
+  const filteredStaffMembers = members.filter(member =>
+    member.name.toLowerCase().includes(staffMemberSearchQuery.toLowerCase()) ||
+    member.email.toLowerCase().includes(staffMemberSearchQuery.toLowerCase())
+  )
+
+  // Debug logging
+  console.log('Members loaded:', members.length)
+  console.log('Filtered staff members:', filteredStaffMembers.length)
+  console.log('Selected staff members:', selectedStaffMembers.size)
+
+  const removeStaff = async (id: string) => {
+    // If it's an existing staff member, remove it from the database
+    if (id.startsWith('existing-') && editingCompetition) {
+      const staffId = parseInt(id.replace('existing-', ''))
+      try {
+        const { error } = await supabase
+          .from('competition_coaches')
+          .delete()
+          .eq('competition_coaches_id', staffId)
+
+        if (error) {
+          console.error('Error removing staff from database:', error)
+          alert('Failed to remove staff member. Please try again.')
+          return
+        }
+      } catch (error) {
+        console.error('Unexpected error removing staff:', error)
+        alert('An unexpected error occurred. Please try again.')
+        return
+      }
+    }
+
     setStaff(prev => prev.filter(member => member.id !== id))
   }
 
@@ -1132,68 +1428,247 @@ export default function AddCompetitionModal({ onClose, onAddCompetition, editing
 
           {/* Staff Tab */}
           {activeTab === 'staff' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-white">Competition Staff</h3>
-                <button
-                  type="button"
-                  onClick={addStaff}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors duration-200"
-                >
-                  Add Staff
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                {staff.map((member) => (
-                  <div key={member.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Name
-                        </label>
-                        <input
-                          type="text"
-                          value={member.name}
-                          onChange={(e) => updateStaff(member.id, 'name', e.target.value)}
-                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Enter staff member name"
-                        />
+            <div className="space-y-6">
+              {/* Bulk Staff Selection Section */}
+              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                <h3 className="text-lg font-medium text-white mb-4">Bulk Staff Selection</h3>
+                
+                {isLoadingData ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                    <span className="ml-3 text-gray-400">Loading staff options...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Profile Selection */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-md font-medium text-white flex items-center">
+                            🏆 All Profiles (Staff with App Access)
+                            {selectedProfiles.size > 0 && (
+                              <span className="text-xs text-blue-400 ml-2">
+                                {selectedProfiles.size} selected
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-xs text-gray-400 mt-1">All users with profiles (super_admin, admin, coach, assistant_coach, etc.)</p>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Search profiles..."
+                              value={profileSearchQuery}
+                              onChange={(e) => setProfileSearchQuery(e.target.value)}
+                              className="w-48 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 pl-9 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleSelectAllProfiles}
+                            className="text-blue-400 hover:text-blue-300 text-sm transition-colors duration-200"
+                          >
+                            {filteredProfiles.every(p => selectedProfiles.has(p.profiles_id)) ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Role
-                        </label>
-                        <select
-                          value={member.role}
-                          onChange={(e) => updateStaff(member.id, 'role', e.target.value)}
-                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="" className="bg-gray-800">Select role</option>
-                          <option value="Coach" className="bg-gray-800">Coach</option>
-                          <option value="Referee" className="bg-gray-800">Referee</option>
-                          <option value="Judge" className="bg-gray-800">Judge</option>
-                          <option value="Organizer" className="bg-gray-800">Organizer</option>
-                          <option value="Medic" className="bg-gray-800">Medic</option>
-                          <option value="Volunteer" className="bg-gray-800">Volunteer</option>
-                        </select>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {filteredProfiles.map((profile) => (
+                          <label
+                            key={profile.profiles_id}
+                            className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors duration-200 ${
+                              selectedProfiles.has(profile.profiles_id)
+                                ? 'bg-blue-600/20 border-blue-500/50'
+                                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedProfiles.has(profile.profiles_id)}
+                              onChange={() => handleProfileToggle(profile.profiles_id)}
+                              className="w-4 h-4 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-blue-500 focus:ring-2"
+                            />
+                            <div className="flex-1">
+                              <span className="text-white text-sm font-medium">{profile.name || 'Unnamed Profile'}</span>
+                              <span className="text-xs text-blue-400 ml-2">({profile.role})</span>
+                            </div>
+                          </label>
+                        ))}
+                        
+                        {filteredProfiles.length === 0 && profileSearchQuery && (
+                          <div className="text-center py-4 text-gray-400 col-span-full">
+                            <p>No coaches found matching "{profileSearchQuery}"</p>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeStaff(member.id)}
-                      className="mt-3 text-red-400 hover:text-red-300 text-sm transition-colors duration-200"
-                    >
-                      Remove Staff
-                    </button>
-                  </div>
-                ))}
-                
-                {staff.length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    <p>No staff added yet. Click "Add Staff" to get started.</p>
+
+                    {/* Member Selection */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-md font-medium text-white flex items-center">
+                            👤 Members (Jump-in Coaches)
+                            {selectedStaffMembers.size > 0 && (
+                              <span className="text-xs text-green-400 ml-2">
+                                {selectedStaffMembers.size} selected
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-xs text-gray-400 mt-1">Members available for coaching</p>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Search members..."
+                              value={staffMemberSearchQuery}
+                              onChange={(e) => setStaffMemberSearchQuery(e.target.value)}
+                              className="w-48 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 pl-9 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                            />
+                            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleSelectAllStaffMembers}
+                            className="text-green-400 hover:text-green-300 text-sm transition-colors duration-200"
+                          >
+                            {filteredStaffMembers.every(m => selectedStaffMembers.has(m.id)) ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {filteredStaffMembers.map((member) => (
+                            <label
+                              key={member.id}
+                              className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors duration-200 ${
+                                selectedStaffMembers.has(member.id)
+                                  ? 'bg-green-600/20 border-green-500/50'
+                                  : 'bg-white/5 border-white/10 hover:bg-white/10'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedStaffMembers.has(member.id)}
+                                onChange={() => handleStaffMemberToggle(member.id)}
+                                className="w-4 h-4 text-green-600 bg-white/10 border-white/20 rounded focus:ring-green-500 focus:ring-2"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-white text-sm font-medium block truncate">{member.name}</span>
+                                {member.email && (
+                                  <span className="text-xs text-gray-400 block truncate">{member.email}</span>
+                                )}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                        
+                        {filteredStaffMembers.length === 0 && (
+                          <div className="text-center py-4 text-gray-400">
+                            {staffMemberSearchQuery ? (
+                              <p>No members found matching "{staffMemberSearchQuery}"</p>
+                            ) : members.length === 0 ? (
+                              <p>No members loaded. Please check if members exist in the database.</p>
+                            ) : (
+                              <p>No members available for selection.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bulk Add Button */}
+                    <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                      <div className="text-sm text-gray-400">
+                        {selectedProfiles.size} coaches + {selectedStaffMembers.size} members = {selectedProfiles.size + selectedStaffMembers.size} staff
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleBulkStaffAdd}
+                        disabled={selectedProfiles.size === 0 && selectedStaffMembers.size === 0}
+                        className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                      >
+                        Add {selectedProfiles.size + selectedStaffMembers.size} Staff Members
+                      </button>
+                    </div>
                   </div>
                 )}
+              </div>
+
+              {/* Individual Staff Management */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-white">Current Staff</h3>
+                  <button
+                    type="button"
+                    onClick={addStaff}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors duration-200"
+                  >
+                    Add Individual Staff
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  {staff.map((member) => (
+                    <div key={member.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <div className="space-y-4">
+                        {/* Staff Info Display */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-white font-medium">
+                              {member.staff_type === 'coach' && '🏆 '}
+                              {member.staff_type === 'member' && '👤 '}
+                              {member.name}
+                            </h4>
+                            <p className="text-xs text-gray-400">
+                              {member.staff_type === 'coach' ? 'Coach Profile' : 'Member (Jump-in Coach)'}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeStaff(member.id)}
+                            className="text-red-400 hover:text-red-300 text-sm transition-colors duration-200"
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        {/* Role Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Role
+                          </label>
+                          <select
+                            value={member.role}
+                            onChange={(e) => updateStaff(member.id, 'role', e.target.value)}
+                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="" className="bg-gray-800">Select role</option>
+                            <option value="Coach" className="bg-gray-800">Coach</option>
+                            <option value="Referee" className="bg-gray-800">Referee</option>
+                            <option value="Judge" className="bg-gray-800">Judge</option>
+                            <option value="Organizer" className="bg-gray-800">Organizer</option>
+                            <option value="Medic" className="bg-gray-800">Medic</option>
+                            <option value="Volunteer" className="bg-gray-800">Volunteer</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {staff.length === 0 && (
+                    <div className="text-center py-8 text-gray-400">
+                      <p>No staff added yet. Use bulk selection above or add individual staff members.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

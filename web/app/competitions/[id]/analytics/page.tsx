@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '../../../lib/supabaseClient'
-import Sidebar from '../../../components/Sidebar'
-import ProfileDropdown from '../../../components/ProfileDropdown'
-import MobileBottomNav from '../../../components/MobileBottomNav'
-import AnimatedBackground from '../../../components/AnimatedBackground'
+import { supabase } from '@/lib/supabaseClient'
+import Sidebar from '@/components/Sidebar'
+import ProfileDropdown from '@/components/ProfileDropdown'
+import MobileBottomNav from '@/components/MobileBottomNav'
+import AnimatedBackground from '@/components/AnimatedBackground'
 
 interface Competition {
   competitions_id: number
