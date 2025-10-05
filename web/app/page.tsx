@@ -1,4 +1,16 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
 export default function Home() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirect to dashboard since the app is live and working
+    router.push('/dashboard')
+  }, [router])
+
   return (
     <main
       style={{
@@ -11,7 +23,7 @@ export default function Home() {
         fontSize: '1.5rem'
       }}
     >
-      ✅ TatamiHQ is Live and Working
+      Redirecting to dashboard...
     </main>
   );
 }
