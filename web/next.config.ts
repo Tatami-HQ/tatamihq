@@ -6,14 +6,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    turbo: {
-      rules: {
-        // Helps prevent turbo root confusion
-        ignoreLintErrors: true,
-      },
-    },
-  },
 };
 
 module.exports = nextConfig;
