@@ -1,10 +1,16 @@
 {
   "version": 2,
-  "buildCommand": "cd web && pnpm build",
-  "outputDirectory": "web/.next",
-  "installCommand": "cd web && pnpm install",
-  "devCommand": "cd web && pnpm dev",
-  "framework": "nextjs",
-  "rootDirectory": "web"
+  "builds": [
+    {
+      "src": "web/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "web/$1"
+    }
+  ]
 }
   
