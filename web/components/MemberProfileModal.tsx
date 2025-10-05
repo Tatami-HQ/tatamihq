@@ -512,8 +512,8 @@ export default function MemberProfileModal({
       
       // Check if it's an individual bout
       if (bout.competition_entries_id) {
-        const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
-        if (entry) {
+      const entry = competitionEntries.find(e => e.competition_entries_id === bout.competition_entries_id)
+      if (entry) {
           disciplineName = entry.discipline?.name || 'Unknown'
         }
       }
@@ -525,11 +525,11 @@ export default function MemberProfileModal({
         }
       }
 
-      const disciplineStats = disciplineMap.get(disciplineName)
-      if (disciplineStats) {
-        disciplineStats.bouts++
-        if (bout.result === 'Win') disciplineStats.wins++
-        if (bout.result === 'Loss') disciplineStats.losses++
+        const disciplineStats = disciplineMap.get(disciplineName)
+        if (disciplineStats) {
+          disciplineStats.bouts++
+          if (bout.result === 'Win') disciplineStats.wins++
+          if (bout.result === 'Loss') disciplineStats.losses++
       }
     })
 
@@ -1750,8 +1750,8 @@ export default function MemberProfileModal({
                       <div className="w-8 h-8 bg-yellow-500/20 rounded-lg flex items-center justify-center mr-3">
                         <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                        </svg>
-                      </div>
+                                    </svg>
+                                  </div>
                       Medal Breakdown
                     </h3>
                     
@@ -1771,7 +1771,7 @@ export default function MemberProfileModal({
                                   <div className="text-2xl mb-1">🥇</div>
                                   <div className="text-xl font-bold text-yellow-400">{stats.medals.gold}</div>
                                   <div className="text-xs text-gray-400">Gold</div>
-                                </div>
+                                  </div>
                                 <div className="text-center bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors">
                                   <div className="text-2xl mb-1">🥈</div>
                                   <div className="text-xl font-bold text-gray-300">{stats.medals.silver}</div>
@@ -1781,16 +1781,16 @@ export default function MemberProfileModal({
                                   <div className="text-2xl mb-1">🥉</div>
                                   <div className="text-xl font-bold text-orange-400">{stats.medals.bronze}</div>
                                   <div className="text-xs text-gray-400">Bronze</div>
-                                </div>
                               </div>
+                                </div>
                               <div className="text-center bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg p-4 border border-yellow-500/30">
                                 <div className="text-lg font-bold text-white">{totalMedals} Total Medals</div>
                                 <div className="text-sm text-yellow-400">Medal efficiency: {medalEfficiency}%</div>
+                                </div>
                               </div>
-                            </div>
                           )
                         })()}
-                      </div>
+                            </div>
 
                       {/* Medals by Year */}
                       <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 backdrop-blur-lg border border-purple-500/20 rounded-2xl p-6 hover:border-purple-400/40 transition-all duration-300">
@@ -1830,7 +1830,7 @@ export default function MemberProfileModal({
                                   <div className="flex justify-between items-center mb-2">
                                     <div className="font-medium text-white">{data.year}</div>
                                     <div className="text-sm text-purple-400">{data.total} medals</div>
-                                  </div>
+                        </div>
                                   <div className="flex space-x-2">
                                     {data.medals.gold > 0 && <span className="text-yellow-400">🥇{data.medals.gold}</span>}
                                     {data.medals.silver > 0 && <span className="text-gray-300">🥈{data.medals.silver}</span>}
@@ -1842,29 +1842,29 @@ export default function MemberProfileModal({
                                   <div className="text-sm">No medal data available</div>
                                 </div>
                               )}
-                            </div>
-                          )
-                        })()}
+                      </div>
+                    )
+                  })()}
                       </div>
 
                       {/* Best Performance */}
                       <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-lg border border-green-500/20 rounded-2xl p-6 hover:border-green-400/40 transition-all duration-300">
                         <h4 className="text-lg font-semibold text-white mb-4">Best Performance</h4>
-                        {(() => {
+                  {(() => {
                           const stats = getCompetitionStats()
                           const bestMedal = stats.medals.gold >= stats.medals.silver && stats.medals.gold >= stats.medals.bronze ? 'Gold' :
                                            stats.medals.silver >= stats.medals.bronze ? 'Silver' : 'Bronze'
                           const mostMedals = Math.max(stats.medals.gold, stats.medals.silver, stats.medals.bronze)
                           
-                          return (
+                            return (
                             <div className="space-y-4">
                               <div className="text-center bg-white/5 rounded-lg p-4">
                                 <div className="text-3xl mb-2">
                                   {bestMedal === 'Gold' ? '🥇' : bestMedal === 'Silver' ? '🥈' : '🥉'}
-                                </div>
+                                  </div>
                                 <div className="text-lg font-bold text-white">{mostMedals} {bestMedal}</div>
                                 <div className="text-sm text-gray-400">Most common medal</div>
-                              </div>
+                                  </div>
                               
                               <div className="space-y-2">
                                 <div className="flex justify-between text-sm">
@@ -1905,20 +1905,20 @@ export default function MemberProfileModal({
                                   <div>
                                     <div className="font-medium text-white">{team.team_name}</div>
                                     <div className="text-sm text-gray-400">{teamBouts.length} team bouts</div>
-                            </div>
-                              <div className="text-right">
+                                </div>
+                                <div className="text-right">
                                     <div className={`text-2xl font-bold ${
                                       teamWinRate >= 70 ? 'text-green-400' : 
                                       teamWinRate >= 50 ? 'text-yellow-400' : 
                                       'text-red-400'
                                     }`}>
                                       {teamWinRate}%
-                                </div>
+                                  </div>
                                     <div className="text-xs text-gray-400">Win Rate</div>
+                                  </div>
                                 </div>
-                        </div>
-                      </div>
-                    )
+                              </div>
+                            )
                           })}
                         </div>
                       ) : (
@@ -1963,9 +1963,9 @@ export default function MemberProfileModal({
                             <div className="text-center">
                               <div className="text-lg font-bold text-white">{totalMedals} Total Medals</div>
                               <div className="text-sm text-gray-400">Medal efficiency: {competitionEntries.length > 0 ? Math.round((totalMedals / competitionEntries.length) * 100) : 0}%</div>
-                                </div>
-                              </div>
-                            )
+                        </div>
+                      </div>
+                    )
                   })()}
                     </div>
                   </div>
