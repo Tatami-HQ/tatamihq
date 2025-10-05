@@ -33,3 +33,4 @@ It’s built with **Next.js + TypeScript + TailwindCSS**, powered by **Supabase*
 /lib          → Business logic, database helpers
 /docs         → Documentation (RULES.md, DATABASE.md, TODO.md)
 /.cursor      → AI coding rules (rules.json) 
+# Force deployment Sun Oct  5 01:26:50 BST 2025
