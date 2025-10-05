@@ -434,7 +434,7 @@ export default function LogResultsModal({ competition, onClose, onLogResults, on
     return 'th'
   }
 
-  const getCompetitorStatus = (competitionEntriesId: number) => {
+  const getCompetitorStatus = (competitionEntriesId: number, isTeamEvent: boolean = false) => {
     const competitorResults = existingResults.find(result => 
       result.competition_entries_id === competitionEntriesId
     )
@@ -453,7 +453,9 @@ export default function LogResultsModal({ competition, onClose, onLogResults, on
     }
     
     // If they have losses but no medal, they're eliminated
-    if (losses > 0 && !competitorResults?.medal) {
+    // EXCEPTION: In team events, individual losses don't eliminate the member
+    // because they can still advance if the team wins overall
+    if (losses > 0 && !competitorResults?.medal && !isTeamEvent) {
       return { status: `Lost ${totalBouts + losses}${getOrdinalSuffix(totalBouts + losses)} Round`, round: `${totalBouts + losses}${getOrdinalSuffix(totalBouts + losses)} Round`, isComplete: true }
     }
     
@@ -467,7 +469,7 @@ export default function LogResultsModal({ competition, onClose, onLogResults, on
   }
 
   const getNextRound = (competitionEntriesId: number) => {
-    const status = getCompetitorStatus(competitionEntriesId)
+    const status = getCompetitorStatus(competitionEntriesId, selectedDiscipline?.team_event || false)
     if (status.isComplete) {
       return status.round
     }
@@ -1355,7 +1357,7 @@ function SelectCompetitorStep({
   getCompetitorWins: (id: number) => number
   getCompetitorLosses: (id: number) => number
   getTotalBouts: (id: number) => number
-  getCompetitorStatus: (id: number) => { status: string, round: string, isComplete: boolean }
+  getCompetitorStatus: (id: number, isTeamEvent?: boolean) => { status: string, round: string, isComplete: boolean }
   onBack: () => void
 }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -1429,7 +1431,7 @@ function SelectCompetitorStep({
 
           const wins = getCompetitorWins(entry.competition_entries_id)
           const losses = getCompetitorLosses(entry.competition_entries_id)
-          const competitorStatus = getCompetitorStatus(entry.competition_entries_id)
+          const competitorStatus = getCompetitorStatus(entry.competition_entries_id, selectedDiscipline?.team_event || false)
           const isEliminated = competitorStatus.isComplete
           const hasMedal = competitorStatus.status.includes('Medal')
 
