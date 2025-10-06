@@ -566,6 +566,19 @@ export default function CompetitionsPage() {
 
   // Function to filter data based on selected discipline
   const filterDataByDiscipline = (data: any) => {
+    console.log('filterDataByDiscipline called with:', {
+      selectedDiscipline,
+      dataStructure: {
+        hasIndividualBouts: !!data.individualBouts,
+        individualBoutsType: typeof data.individualBouts,
+        isIndividualBoutsArray: Array.isArray(data.individualBouts),
+        individualBoutsLength: data.individualBouts?.length,
+        hasTeamBouts: !!data.teamBouts,
+        teamBoutsType: typeof data.teamBouts,
+        isTeamBoutsArray: Array.isArray(data.teamBouts)
+      }
+    })
+
     if (selectedDiscipline === 'All Disciplines') {
       return data
     }
@@ -573,8 +586,8 @@ export default function CompetitionsPage() {
     // Create a deep copy to avoid mutating the original data
     const filteredData = {
       ...data,
-      individualBouts: data.individualBouts ? [...data.individualBouts] : [],
-      teamBouts: data.teamBouts ? [...data.teamBouts] : [],
+      individualBouts: (data.individualBouts && Array.isArray(data.individualBouts)) ? [...data.individualBouts] : [],
+      teamBouts: (data.teamBouts && Array.isArray(data.teamBouts)) ? [...data.teamBouts] : [],
       summary: data.summary ? { ...data.summary } : {}
     }
     
