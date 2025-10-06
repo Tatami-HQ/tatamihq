@@ -65,6 +65,7 @@ export default function CompetitionsPage() {
   const [showTeamBoutsModal, setShowTeamBoutsModal] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedDiscipline, setSelectedDiscipline] = useState('All Disciplines')
+  const [availableDisciplines, setAvailableDisciplines] = useState<Array<{id: number, name: string}>>([])
   const router = useRouter()
 
   useEffect(() => {
@@ -117,6 +118,17 @@ export default function CompetitionsPage() {
     return () => subscription.unsubscribe()
   }, [router])
 
+  // Apply discipline filter when selectedDiscipline changes
+  useEffect(() => {
+    if (detailModalData.type === 'winrate' && detailModalData.overviewData) {
+      const filteredData = filterDataByDiscipline({ ...detailModalData.overviewData })
+      setDetailModalData(prev => ({
+        ...prev,
+        overviewData: filteredData
+      }))
+    }
+  }, [selectedDiscipline])
+
   const fetchCompetitions = async () => {
     try {
       setIsLoadingCompetitions(true)
@@ -146,6 +158,7 @@ export default function CompetitionsPage() {
       
       // Fetch analytics data after competitions are loaded
       fetchClubAnalytics()
+      fetchDisciplines()
     } catch (error) {
       console.error('[Competitions:fetchCompetitions] Unexpected error:', error)
       setError('An unexpected error occurred. Please try again.')
@@ -168,6 +181,33 @@ export default function CompetitionsPage() {
       setError('Failed to load analytics data. Please try again.')
     } finally {
       setIsLoadingAnalytics(false)
+    }
+  }
+
+  const fetchDisciplines = async () => {
+    try {
+      const { data: disciplines, error } = await supabase
+        .from('competition_disciplines')
+        .select('competition_disciplines_id, name')
+        .order('name', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching disciplines:', error)
+        // Fallback to some default disciplines if the table doesn't exist
+        setAvailableDisciplines([
+          { id: 1, name: 'Sparring' },
+          { id: 2, name: 'Patterns' },
+          { id: 3, name: 'Power' },
+          { id: 4, name: 'Special Technique' },
+          { id: 5, name: 'Self Defense' },
+          { id: 6, name: 'Breaking' }
+        ])
+      } else {
+        setAvailableDisciplines(disciplines || [])
+      }
+    } catch (error) {
+      console.error('Critical error fetching disciplines:', error)
+      setAvailableDisciplines([])
     }
   }
 
@@ -231,25 +271,25 @@ export default function CompetitionsPage() {
       let boutsData: any[] = []
       try {
         const { data, error } = await supabase
-          .from('competition_bouts')
-          .select(`
-            competition_bouts_id,
-            result,
-            round,
-            competition_entries_id,
-            competition_teams_id,
-            created_at
-          `)
-          .is('competition_teams_id', null) // Only individual bouts, not team events
+        .from('competition_bouts')
+        .select(`
+          competition_bouts_id,
+          result,
+          round,
+          competition_entries_id,
+          competition_teams_id,
+          created_at
+        `)
+        .is('competition_teams_id', null) // Only individual bouts, not team events
 
-        if (error) {
-          console.error('Error fetching bouts detail:', error)
-          console.error('Bouts detail error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          })
+      if (error) {
+        console.error('Error fetching bouts detail:', error)
+        console.error('Bouts detail error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
           
           // Try simpler query without filtering
           const { data: simpleData, error: simpleError } = await supabase
@@ -517,6 +557,64 @@ export default function CompetitionsPage() {
 
     setDetailModalData({ title, data, type, overviewData })
     setShowDetailModal(true)
+  }
+
+  // Function to filter data based on selected discipline
+  const filterDataByDiscipline = (data: any) => {
+    if (selectedDiscipline === 'All Disciplines') {
+      return data
+    }
+    
+    // Filter individual bouts by discipline
+    if (data.individualBouts) {
+      data.individualBouts = data.individualBouts.filter((bout: any) => 
+        bout.discipline === selectedDiscipline
+      )
+    }
+    
+    // Filter team bouts by discipline (if they have discipline info)
+    if (data.teamBouts) {
+      data.teamBouts = data.teamBouts.filter((bout: any) => 
+        bout.discipline === selectedDiscipline
+      )
+    }
+    
+    // Recalculate summary statistics
+    if (data.summary) {
+      const individualBouts = data.individualBouts || []
+      const teamBouts = data.teamBouts || []
+      const totalBouts = individualBouts.length + teamBouts.length
+      const individualWins = individualBouts.filter((b: any) => b.isWin).length
+      const individualLosses = individualBouts.filter((b: any) => b.isLoss).length
+      const teamWins = teamBouts.filter((b: any) => b.isWin).length
+      const teamLosses = teamBouts.filter((b: any) => b.isLoss).length
+      const totalWins = individualWins + teamWins
+      const totalLosses = individualLosses + teamLosses
+      const overallWinRate = totalBouts > 0 ? Math.round((totalWins / totalBouts) * 100 * 10) / 10 : 0
+      const individualWinRate = individualBouts.length > 0 ? Math.round((individualWins / individualBouts.length) * 100 * 10) / 10 : 0
+      const teamWinRate = teamBouts.length > 0 ? Math.round((teamWins / teamBouts.length) * 100 * 10) / 10 : 0
+
+      data.summary = {
+        ...data.summary,
+        totalBouts,
+        totalWins,
+        totalLosses,
+        overallWinRate,
+        individualBouts: individualBouts.length,
+        individualWins,
+        individualLosses,
+        individualWinRate,
+        teamBouts: teamBouts.length,
+        teamWins,
+        teamLosses,
+        teamWinRate,
+        uniqueCompetitors: new Set(individualBouts.map((b: any) => b.memberId)).size,
+        uniqueTeams: new Set(teamBouts.map((b: any) => b.teamId)).size,
+        uniqueCompetitions: new Set([...individualBouts.map((b: any) => b.competitionId), ...teamBouts.map((b: any) => b.competitionId)]).size
+      }
+    }
+    
+    return data
   }
 
   const handleLogout = async () => {
@@ -1519,26 +1617,26 @@ export default function CompetitionsPage() {
                       <div key={competitor.memberId} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors duration-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                               {competitor.profilePicture ? (
-                                <img 
+                          <img 
                                   src={competitor.profilePicture} 
                                   alt={competitor.memberName}
-                                  className="w-12 h-12 rounded-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none'
+                            className="w-12 h-12 rounded-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
                                     const nextElement = e.currentTarget.nextElementSibling as HTMLElement
                                     if (nextElement) nextElement.style.display = 'flex'
-                                  }}
-                                />
-                              ) : null}
+                            }}
+                          />
+                        ) : null}
                               <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center" style={{display: competitor.profilePicture ? 'none' : 'flex'}}>
                                 <span className="text-blue-400 font-semibold text-lg">
                                   {competitor.memberName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
                                 </span>
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
                               <div className="text-lg font-medium text-white">{competitor.memberName}</div>
                               <div className="text-sm text-gray-400">
                                 {competitor.totalCompetitions} competitions • {competitor.totalBouts} bouts • {competitor.totalWins} wins
@@ -1577,9 +1675,9 @@ export default function CompetitionsPage() {
                               )}
                             </div>
                           </div>
-                        </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                   </div>
                 </div>
               )}
@@ -1679,16 +1777,18 @@ export default function CompetitionsPage() {
                         className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                       >
                         <option value="All Disciplines">All Disciplines</option>
-                        <option value="Sparring">Sparring</option>
-                        <option value="Patterns">Patterns</option>
-                        <option value="Power">Power</option>
-                        <option value="Special Technique">Special Technique</option>
-                        <option value="Self Defense">Self Defense</option>
-                        <option value="Breaking">Breaking</option>
+                        {availableDisciplines.map((discipline) => (
+                          <option key={discipline.id} value={discipline.name}>
+                            {discipline.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="mt-2 text-sm text-gray-400">
                       Currently showing: {selectedDiscipline}
+                      {availableDisciplines.length === 0 && (
+                        <span className="text-yellow-400 ml-2">(Loading disciplines...)</span>
+                      )}
                     </div>
                   </div>
 
