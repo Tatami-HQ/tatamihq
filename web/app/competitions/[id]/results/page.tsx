@@ -388,17 +388,32 @@ export default function CompetitionResultsPage() {
   }
 
   const getFilteredEntries = () => {
+    console.log('getFilteredEntries called with:', {
+      selectedDiscipline,
+      totalEntries: competitionEntries.length,
+      entriesByDiscipline: competitionEntries.reduce((acc, entry) => {
+        const discId = entry.competition_disciplines_id
+        acc[discId] = (acc[discId] || 0) + 1
+        return acc
+      }, {} as Record<number, number>)
+    })
+
     if (!selectedDiscipline) {
       // For "All Disciplines", deduplicate by member ID to avoid showing the same member multiple times
       const seenMembers = new Set<number>()
-      return competitionEntries.filter(entry => {
+      const filtered = competitionEntries.filter(entry => {
         if (!entry.members_id) return false
         if (seenMembers.has(entry.members_id)) return false
         seenMembers.add(entry.members_id)
         return true
       })
+      console.log('All Disciplines - filtered entries:', filtered.length)
+      return filtered
     }
-    return competitionEntries.filter(entry => entry.competition_disciplines_id === selectedDiscipline)
+    
+    const filtered = competitionEntries.filter(entry => entry.competition_disciplines_id === selectedDiscipline)
+    console.log(`Discipline ${selectedDiscipline} - filtered entries:`, filtered.length)
+    return filtered
   }
 
   const getFilteredTeams = () => {
@@ -701,7 +716,14 @@ export default function CompetitionResultsPage() {
                   {competitionDisciplines.map((discipline) => (
                     <button
                       key={discipline.competition_disciplines_id}
-                      onClick={() => setSelectedDiscipline(discipline.competition_disciplines_id)}
+                      onClick={() => {
+                        console.log('Discipline button clicked:', {
+                          disciplineId: discipline.competition_disciplines_id,
+                          disciplineName: discipline.name,
+                          currentSelection: selectedDiscipline
+                        })
+                        setSelectedDiscipline(discipline.competition_disciplines_id)
+                      }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
                         selectedDiscipline === discipline.competition_disciplines_id
                           ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/25'
