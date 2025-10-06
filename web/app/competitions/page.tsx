@@ -228,28 +228,46 @@ export default function CompetitionsPage() {
       console.log('Fetching bouts detail...')
       
       // Fetch ALL bouts data - individual bouts only (exclude team events)
-      const { data: boutsData, error } = await supabase
-        .from('competition_bouts')
-        .select(`
-          competition_bouts_id,
-          result,
-          round,
-          medal,
-          competition_entries_id,
-          competition_teams_id,
-          competitions_id,
-          created_at
-        `)
-        .is('competition_teams_id', null) // Only individual bouts, not team events
+      let boutsData: any[] = []
+      try {
+        const { data, error } = await supabase
+          .from('competition_bouts')
+          .select(`
+            competition_bouts_id,
+            result,
+            round,
+            competition_entries_id,
+            competition_teams_id,
+            created_at
+          `)
+          .is('competition_teams_id', null) // Only individual bouts, not team events
 
-      if (error) {
-        console.error('Error fetching bouts detail:', error)
-        console.error('Bouts detail error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
+        if (error) {
+          console.error('Error fetching bouts detail:', error)
+          console.error('Bouts detail error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          })
+          
+          // Try simpler query without filtering
+          const { data: simpleData, error: simpleError } = await supabase
+            .from('competition_bouts')
+            .select('competition_bouts_id, result, competition_entries_id')
+            .limit(100)
+          
+          if (simpleError) {
+            console.error('Simple query also failed:', simpleError)
+            return []
+          }
+          
+          boutsData = simpleData || []
+        } else {
+          boutsData = data || []
+        }
+      } catch (criticalError) {
+        console.error('Critical error in fetchBoutsDetail:', criticalError)
         return []
       }
 

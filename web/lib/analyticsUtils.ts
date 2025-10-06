@@ -1285,6 +1285,12 @@ export class AnalyticsService {
 
       if (entriesError) {
         console.error('Error fetching entries:', entriesError)
+        console.error('Entries error details:', {
+          message: entriesError.message,
+          details: entriesError.details,
+          hint: entriesError.hint,
+          code: entriesError.code
+        })
         return {
           competitors: [],
           totalStats: { totalCompetitors: 0, totalCompetitions: 0, totalBouts: 0, totalWins: 0, overallWinRate: 0, totalMedals: 0 }
@@ -1300,37 +1306,88 @@ export class AnalyticsService {
 
       if (membersError) {
         console.error('Error fetching members:', membersError)
+        console.error('Members error details:', {
+          message: membersError.message,
+          details: membersError.details,
+          hint: membersError.hint,
+          code: membersError.code
+        })
         return {
           competitors: [],
           totalStats: { totalCompetitors: 0, totalCompetitions: 0, totalBouts: 0, totalWins: 0, overallWinRate: 0, totalMedals: 0 }
         }
       }
 
-      // Get bout data for all members
-      const { data: bouts, error: boutsError } = await supabase
-        .from('competition_bouts')
-        .select(`
-          *,
-          entry:competition_entries(members_id, competitions_id)
-        `)
-        .in('competition_entries_id', entries?.map((e: any) => e.competition_entries_id) || [])
+      // Get bout data for all members - with error handling
+      let bouts: any[] = []
+      try {
+        const { data: boutsData, error: boutsError } = await supabase
+          .from('competition_bouts')
+          .select(`
+            competition_bouts_id,
+            result,
+            competition_entries_id,
+            entry:competition_entries(members_id, competitions_id)
+          `)
+          .in('competition_entries_id', entries?.map((e: any) => e.competition_entries_id) || [])
 
-      if (boutsError) {
-        console.error('Error fetching bouts:', boutsError)
+        if (boutsError) {
+          console.error('Error fetching bouts:', boutsError)
+          console.error('Bouts error details:', {
+            message: boutsError.message,
+            details: boutsError.details,
+            hint: boutsError.hint,
+            code: boutsError.code
+          })
+          // Try simpler query without joins
+          const { data: simpleBouts } = await supabase
+            .from('competition_bouts')
+            .select('competition_bouts_id, result, competition_entries_id')
+            .in('competition_entries_id', entries?.map((e: any) => e.competition_entries_id) || [])
+          bouts = simpleBouts || []
+        } else {
+          bouts = boutsData || []
+        }
+      } catch (error) {
+        console.error('Critical error fetching bouts:', error)
+        bouts = []
       }
 
-      // Get results data for all members
-      const { data: results, error: resultsError } = await supabase
-        .from('competition_results')
-        .select(`
-          *,
-          member:members(members_id, first_name, last_name),
-          competition:competitions(competitions_id, Name, date_start)
-        `)
-        .in('members_id', memberIds)
+      // Get results data for all members - with error handling
+      let results: any[] = []
+      try {
+        const { data: resultsData, error: resultsError } = await supabase
+          .from('competition_results')
+          .select(`
+            competition_results_id,
+            medal,
+            members_id,
+            competitions_id,
+            member:members(members_id, first_name, last_name),
+            competition:competitions(competitions_id, Name, date_start)
+          `)
+          .in('members_id', memberIds)
 
-      if (resultsError) {
-        console.error('Error fetching results:', resultsError)
+        if (resultsError) {
+          console.error('Error fetching results:', resultsError)
+          console.error('Results error details:', {
+            message: resultsError.message,
+            details: resultsError.details,
+            hint: resultsError.hint,
+            code: resultsError.code
+          })
+          // Try simpler query without joins
+          const { data: simpleResults } = await supabase
+            .from('competition_results')
+            .select('competition_results_id, medal, members_id, competitions_id')
+            .in('members_id', memberIds)
+          results = simpleResults || []
+        } else {
+          results = resultsData || []
+        }
+      } catch (error) {
+        console.error('Critical error fetching results:', error)
+        results = []
       }
 
       // Process data for each competitor
