@@ -203,7 +203,12 @@ export default function CompetitionsPage() {
           { id: 6, name: 'Breaking' }
         ])
       } else {
-        setAvailableDisciplines(disciplines || [])
+        setAvailableDisciplines(
+          disciplines?.map(d => ({
+            id: d.competition_disciplines_id,
+            name: d.name
+          })) || []
+        )
       }
     } catch (error) {
       console.error('Critical error fetching disciplines:', error)
@@ -565,24 +570,32 @@ export default function CompetitionsPage() {
       return data
     }
     
+    // Create a deep copy to avoid mutating the original data
+    const filteredData = {
+      ...data,
+      individualBouts: data.individualBouts ? [...data.individualBouts] : [],
+      teamBouts: data.teamBouts ? [...data.teamBouts] : [],
+      summary: data.summary ? { ...data.summary } : {}
+    }
+    
     // Filter individual bouts by discipline
-    if (data.individualBouts) {
-      data.individualBouts = data.individualBouts.filter((bout: any) => 
+    if (Array.isArray(filteredData.individualBouts)) {
+      filteredData.individualBouts = filteredData.individualBouts.filter((bout: any) => 
         bout.discipline === selectedDiscipline
       )
     }
     
     // Filter team bouts by discipline (if they have discipline info)
-    if (data.teamBouts) {
-      data.teamBouts = data.teamBouts.filter((bout: any) => 
+    if (Array.isArray(filteredData.teamBouts)) {
+      filteredData.teamBouts = filteredData.teamBouts.filter((bout: any) => 
         bout.discipline === selectedDiscipline
       )
     }
     
     // Recalculate summary statistics
-    if (data.summary) {
-      const individualBouts = data.individualBouts || []
-      const teamBouts = data.teamBouts || []
+    if (filteredData.summary) {
+      const individualBouts = filteredData.individualBouts || []
+      const teamBouts = filteredData.teamBouts || []
       const totalBouts = individualBouts.length + teamBouts.length
       const individualWins = individualBouts.filter((b: any) => b.isWin).length
       const individualLosses = individualBouts.filter((b: any) => b.isLoss).length
@@ -594,8 +607,8 @@ export default function CompetitionsPage() {
       const individualWinRate = individualBouts.length > 0 ? Math.round((individualWins / individualBouts.length) * 100 * 10) / 10 : 0
       const teamWinRate = teamBouts.length > 0 ? Math.round((teamWins / teamBouts.length) * 100 * 10) / 10 : 0
 
-      data.summary = {
-        ...data.summary,
+      filteredData.summary = {
+        ...filteredData.summary,
         totalBouts,
         totalWins,
         totalLosses,
@@ -614,7 +627,7 @@ export default function CompetitionsPage() {
       }
     }
     
-    return data
+    return filteredData
   }
 
   const handleLogout = async () => {
