@@ -8,6 +8,7 @@ import Sidebar from '@/components/Sidebar'
 import ProfileDropdown from '@/components/ProfileDropdown'
 import MobileBottomNav from '@/components/MobileBottomNav'
 import AnimatedBackground from '@/components/AnimatedBackground'
+import { useSidebar } from '@/contexts/SidebarContext'
 
 interface Competition {
   competitions_id: number
@@ -67,6 +68,7 @@ export default function CompetitionAnalytics() {
   const params = useParams()
   const router = useRouter()
   const competitionId = params.id as string
+  const { isCollapsed } = useSidebar()
 
   const [user, setUser] = useState<User | null>(null)
   const [competition, setCompetition] = useState<Competition | null>(null)
@@ -269,16 +271,16 @@ export default function CompetitionAnalytics() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative">
+    <div className="min-h-screen bg-black flex overflow-x-hidden">
       <AnimatedBackground />
       
-      {/* Sidebar */}
-      <div className="relative z-10">
+      {/* Sidebar - Hidden on mobile */}
+      <div className="hidden sm:block relative z-10">
         <Sidebar />
       </div>
 
       {/* Main Content */}
-      <div className="ml-64 relative z-10">
+      <div className={`flex-1 flex flex-col overflow-x-hidden relative z-20 transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         {/* Header */}
         <div className="bg-gray-900/50 backdrop-blur-sm border-b border-white/10 p-6">
           <div className="flex items-center justify-between">

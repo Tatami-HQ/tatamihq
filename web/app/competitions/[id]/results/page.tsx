@@ -10,6 +10,7 @@ import ProfileDropdown from '@/components/ProfileDropdown'
 import MobileBottomNav from '@/components/MobileBottomNav'
 import AnimatedBackground from '@/components/AnimatedBackground'
 import EditBoutModal from '@/components/EditBoutModal'
+import { useSidebar } from '@/contexts/SidebarContext'
 
 interface Competition {
   competitions_id: number
@@ -102,6 +103,7 @@ export default function CompetitionResultsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const { isCollapsed } = useSidebar()
   const [competition, setCompetition] = useState<Competition | null>(null)
   const [competitionEntries, setCompetitionEntries] = useState<CompetitionEntry[]>([])
   const [competitionDisciplines, setCompetitionDisciplines] = useState<CompetitionDiscipline[]>([])
@@ -269,10 +271,8 @@ export default function CompetitionResultsPage() {
       }
       setTeamMembers(teamMembersData as unknown as CompetitionTeamMember[] || [])
 
-      // Set first discipline as selected by default
-      if (disciplinesData && disciplinesData.length > 0) {
-        setSelectedDiscipline(disciplinesData[0].competition_disciplines_id)
-      }
+      // Default to "All Disciplines" (null value)
+      setSelectedDiscipline(null)
 
       console.log('[CompetitionResults:fetchCompetitionData] Data fetched successfully:', {
         competition: competitionData,
@@ -492,7 +492,7 @@ export default function CompetitionResultsPage() {
   const filteredBouts = getFilteredBouts()
 
   return (
-    <div className="flex min-h-screen bg-black overflow-x-hidden relative ios-status-bar-fix">
+    <div className="min-h-screen bg-black flex overflow-x-hidden">
       {/* Animated Background */}
       <AnimatedBackground />
       
@@ -501,7 +501,7 @@ export default function CompetitionResultsPage() {
         <Sidebar />
       </div>
       
-      <div className="flex-1 flex flex-col overflow-x-hidden relative z-10">
+      <div className={`flex-1 flex flex-col overflow-x-hidden relative z-20 transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         {/* Header */}
         <header className="bg-black border-b border-white/10 px-6 py-4">
           <div className="flex items-center justify-between">
