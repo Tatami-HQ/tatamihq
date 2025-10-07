@@ -584,7 +584,11 @@ export default function CompetitionsPage() {
     })
 
     if (selectedDiscipline === 'All Disciplines') {
-      return data
+      // Ensure the original data has overallWinRate for the UI
+      return {
+        ...data,
+        overallWinRate: data.winRate || data.overallWinRate || 0
+      }
     }
     
     // Create a deep copy to avoid mutating the original data
@@ -1791,7 +1795,7 @@ export default function CompetitionsPage() {
                       <div className="text-sm text-gray-300">Total Losses</div>
                     </div>
                     <div className="bg-yellow-500/10 rounded-lg p-4 text-center border border-yellow-500/20">
-                      <div className="text-2xl font-bold text-yellow-400">{detailModalData.overviewData?.winRate || 0}%</div>
+                      <div className="text-2xl font-bold text-yellow-400">{detailModalData.overviewData?.overallWinRate || 0}%</div>
                       <div className="text-sm text-gray-300">Overall Win Rate</div>
                     </div>
                   </div>
