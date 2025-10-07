@@ -569,13 +569,14 @@ export default function CompetitionsPage() {
     console.log('filterDataByDiscipline called with:', {
       selectedDiscipline,
       dataStructure: {
-        hasIndividualBouts: !!data.individualBouts,
-        individualBoutsType: typeof data.individualBouts,
-        isIndividualBoutsArray: Array.isArray(data.individualBouts),
-        individualBoutsLength: data.individualBouts?.length,
-        hasTeamBouts: !!data.teamBouts,
-        teamBoutsType: typeof data.teamBouts,
-        isTeamBoutsArray: Array.isArray(data.teamBouts)
+        hasIndividualBoutsData: !!data.individualBoutsData,
+        individualBoutsDataType: typeof data.individualBoutsData,
+        isIndividualBoutsDataArray: Array.isArray(data.individualBoutsData),
+        individualBoutsDataLength: data.individualBoutsData?.length,
+        hasTeamBoutsData: !!data.teamBoutsData,
+        teamBoutsDataType: typeof data.teamBoutsData,
+        isTeamBoutsDataArray: Array.isArray(data.teamBoutsData),
+        availableKeys: Object.keys(data)
       }
     })
 
@@ -586,59 +587,54 @@ export default function CompetitionsPage() {
     // Create a deep copy to avoid mutating the original data
     const filteredData = {
       ...data,
-      individualBouts: (data.individualBouts && Array.isArray(data.individualBouts)) ? [...data.individualBouts] : [],
-      teamBouts: (data.teamBouts && Array.isArray(data.teamBouts)) ? [...data.teamBouts] : [],
-      summary: data.summary ? { ...data.summary } : {}
+      individualBoutsData: (data.individualBoutsData && Array.isArray(data.individualBoutsData)) ? [...data.individualBoutsData] : [],
+      teamBoutsData: (data.teamBoutsData && Array.isArray(data.teamBoutsData)) ? [...data.teamBoutsData] : []
     }
     
     // Filter individual bouts by discipline
-    if (Array.isArray(filteredData.individualBouts)) {
-      filteredData.individualBouts = filteredData.individualBouts.filter((bout: any) => 
+    if (Array.isArray(filteredData.individualBoutsData)) {
+      filteredData.individualBoutsData = filteredData.individualBoutsData.filter((bout: any) => 
         bout.discipline === selectedDiscipline
       )
     }
     
     // Filter team bouts by discipline (if they have discipline info)
-    if (Array.isArray(filteredData.teamBouts)) {
-      filteredData.teamBouts = filteredData.teamBouts.filter((bout: any) => 
+    if (Array.isArray(filteredData.teamBoutsData)) {
+      filteredData.teamBoutsData = filteredData.teamBoutsData.filter((bout: any) => 
         bout.discipline === selectedDiscipline
       )
     }
     
     // Recalculate summary statistics
-    if (filteredData.summary) {
-      const individualBouts = filteredData.individualBouts || []
-      const teamBouts = filteredData.teamBouts || []
-      const totalBouts = individualBouts.length + teamBouts.length
-      const individualWins = individualBouts.filter((b: any) => b.isWin).length
-      const individualLosses = individualBouts.filter((b: any) => b.isLoss).length
-      const teamWins = teamBouts.filter((b: any) => b.isWin).length
-      const teamLosses = teamBouts.filter((b: any) => b.isLoss).length
-      const totalWins = individualWins + teamWins
-      const totalLosses = individualLosses + teamLosses
-      const overallWinRate = totalBouts > 0 ? Math.round((totalWins / totalBouts) * 100 * 10) / 10 : 0
-      const individualWinRate = individualBouts.length > 0 ? Math.round((individualWins / individualBouts.length) * 100 * 10) / 10 : 0
-      const teamWinRate = teamBouts.length > 0 ? Math.round((teamWins / teamBouts.length) * 100 * 10) / 10 : 0
+    const individualBouts = filteredData.individualBoutsData || []
+    const teamBouts = filteredData.teamBoutsData || []
+    const totalBouts = individualBouts.length + teamBouts.length
+    const individualWins = individualBouts.filter((b: any) => b.isWin).length
+    const individualLosses = individualBouts.filter((b: any) => b.isLoss).length
+    const teamWins = teamBouts.filter((b: any) => b.isWin).length
+    const teamLosses = teamBouts.filter((b: any) => b.isLoss).length
+    const totalWins = individualWins + teamWins
+    const totalLosses = individualLosses + teamLosses
+    const overallWinRate = totalBouts > 0 ? Math.round((totalWins / totalBouts) * 100 * 10) / 10 : 0
+    const individualWinRate = individualBouts.length > 0 ? Math.round((individualWins / individualBouts.length) * 100 * 10) / 10 : 0
+    const teamWinRate = teamBouts.length > 0 ? Math.round((teamWins / teamBouts.length) * 100 * 10) / 10 : 0
 
-      filteredData.summary = {
-        ...filteredData.summary,
-        totalBouts,
-        totalWins,
-        totalLosses,
-        overallWinRate,
-        individualBouts: individualBouts.length,
-        individualWins,
-        individualLosses,
-        individualWinRate,
-        teamBouts: teamBouts.length,
-        teamWins,
-        teamLosses,
-        teamWinRate,
-        uniqueCompetitors: new Set(individualBouts.map((b: any) => b.memberId)).size,
-        uniqueTeams: new Set(teamBouts.map((b: any) => b.teamId)).size,
-        uniqueCompetitions: new Set([...individualBouts.map((b: any) => b.competitionId), ...teamBouts.map((b: any) => b.competitionId)]).size
-      }
-    }
+    // Update the summary statistics in the filtered data
+    filteredData.totalBouts = totalBouts
+    filteredData.totalWins = totalWins
+    filteredData.totalLosses = totalLosses
+    filteredData.overallWinRate = overallWinRate
+    filteredData.individualBouts = individualBouts.length
+    filteredData.individualWins = individualWins
+    filteredData.individualLosses = individualLosses
+    filteredData.individualWinRate = individualWinRate
+    filteredData.teamBouts = teamBouts.length
+    filteredData.teamWins = teamWins
+    filteredData.teamLosses = teamLosses
+    filteredData.teamWinRate = teamWinRate
+    filteredData.uniqueCompetitors = new Set(individualBouts.map((b: any) => b.memberId)).size
+    filteredData.uniqueTeams = new Set(teamBouts.map((b: any) => b.teamId)).size
+    filteredData.uniqueCompetitions = new Set([...individualBouts.map((b: any) => b.competitionId), ...teamBouts.map((b: any) => b.competitionId)]).size
     
     return filteredData
   }
