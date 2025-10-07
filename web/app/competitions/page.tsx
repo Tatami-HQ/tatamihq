@@ -66,6 +66,7 @@ export default function CompetitionsPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedDiscipline, setSelectedDiscipline] = useState('All Disciplines')
   const [availableDisciplines, setAvailableDisciplines] = useState<Array<{id: number, name: string}>>([])
+  const [originalWinRateData, setOriginalWinRateData] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -120,14 +121,14 @@ export default function CompetitionsPage() {
 
   // Apply discipline filter when selectedDiscipline changes
   useEffect(() => {
-    if (detailModalData.type === 'winrate' && detailModalData.overviewData) {
-      const filteredData = filterDataByDiscipline({ ...detailModalData.overviewData })
+    if (detailModalData.type === 'winrate' && originalWinRateData) {
+      const filteredData = filterDataByDiscipline({ ...originalWinRateData })
       setDetailModalData(prev => ({
         ...prev,
         overviewData: filteredData
       }))
     }
-  }, [selectedDiscipline])
+  }, [selectedDiscipline, originalWinRateData])
 
   const fetchCompetitions = async () => {
     try {
@@ -512,6 +513,8 @@ export default function CompetitionsPage() {
           individualBoutsData: winRateData.individualBouts,
           teamBoutsData: winRateData.teamBouts
         }
+        // Store the original data for filtering
+        setOriginalWinRateData(overviewData)
         break
       case 'efficiency':
         title = 'Medal Efficiency Analysis'
@@ -1595,7 +1598,11 @@ export default function CompetitionsPage() {
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
               <h3 className="text-lg sm:text-xl font-bold text-white truncate pr-2">{detailModalData.title}</h3>
               <button
-                onClick={() => setShowDetailModal(false)}
+                onClick={() => {
+                  setShowDetailModal(false)
+                  setSelectedDiscipline('All Disciplines')
+                  setOriginalWinRateData(null)
+                }}
                 className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
